@@ -1,0 +1,44 @@
+# Automatisches Deployment zu Infomaniak
+# Bei jedem Push auf "main": bauen und per rsync über SSH hochladen.
+#
+# Benötigte Repository-Secrets (GitHub → Settings → Secrets → Actions):
+#   DEPLOY_HOST     z.B. xxxxx.ftp.infomaniak.com
+#   DEPLOY_USER     Ihr FTP/SSH-Benutzername bei Infomaniak
+#   DEPLOY_SSH_KEY  privater ed25519-SSH-Schlüssel (kompletter Inhalt der Datei)
+#   DEPLOY_PATH     Zielordner, z.B. /home/clients/XXXXXXXX/sites/solar.ihredomain.ch/
+
+name: Deploy zu Infomaniak
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build-und-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code holen
+        uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Website bauen
+        run: npm run build
+
+      - name: Auf Infomaniak hochladen (rsync über SSH)
+        uses: burnett01/rsync-deployments@7.1.0
+        with:
+          switches: -avzr --delete
+          path: dist/
+          remote_path: ${{ secrets.DEPLOY_PATH }}
+          remote_host: ${{ secrets.DEPLOY_HOST }}
+          remote_user: ${{ secrets.DEPLOY_USER }}
+          remote_key: ${{ secrets.DEPLOY_SSH_KEY }}
