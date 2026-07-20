@@ -97,6 +97,14 @@ Infomaniak). Secrets im Repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
   mitdenken.
 - Energie-Reporter-Anteile können als Bruch (0–1) oder Prozent kommen →
   `toPct()`-Guard beibehalten.
+- **Ein lokal grüner `npm run build` beweist NICHT, dass der Deploy baut.**
+  Ein bestehendes `node_modules` überlebt Versionsänderungen in `package.json`
+  und verdeckt Peer-Konflikte; der Workflow nutzt aber `npm ci`, und das bricht
+  bei Peer-Konflikten hart ab statt zu reparieren. Konkret passiert am
+  20.7.2026: Vite-Bump 5→8 baute lokal, hätte aber den Deploy zerbrochen, weil
+  `@vitejs/plugin-react@4` als Peer nur vite `^4 || ^5 || ^6 || ^7` erlaubt
+  (gelöst mit plugin-react `^6`). **Vor dem Push von `package.json`-Änderungen
+  in einem frischen Clone `npm ci && npm run build` laufen lassen.**
 
 ## Typische Aufgaben
 
