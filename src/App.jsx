@@ -743,7 +743,7 @@ export default function SolarRechnerRisch() {
         {/* ---------- HERO ---------- */}
         <header>
           <img className="wappen-img" src={WAPPEN} alt="Wappen der Gemeinde Risch" />
-          <div className="eyebrow">Verein Elektrisch · Gemeinde Risch</div>
+          <div className="eyebrow">Vorgestellt vom Verein Elekt-Risch</div>
           <h1>Wie viel Sonne steckt in unseren Dächern?</h1>
           <p className="lead">
             Der Solarpotenzial-Rechner zeigt für Risch, Rotkreuz, Buonas und Holzhäusern,
@@ -1184,7 +1184,7 @@ export default function SolarRechnerRisch() {
         </section>
 
         <footer>
-          Verein Elektrisch · Solarpotenzial-Rechner Gemeinde Risch · Datenstand Juli 2026.
+          Verein Elekt-Risch · Solarpotenzial-Rechner Gemeinde Risch · Datenstand Juli 2026.
           Quellen: Energie Reporter (www.energiereporter.ch) – Daten: geoimpact AG /
           EnergieSchweiz, CC BY 4.0 · BFE Sonnendach.ch (Solarpotenziale der Schweizer
           Gemeinden, opendata.swiss) · Energie- und Klimastrategie Gemeinde Risch 2025 ·
