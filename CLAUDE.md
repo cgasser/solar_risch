@@ -116,3 +116,26 @@ Infomaniak). Secrets im Repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
 - Erfolgsgeschichten aus dem Dorf, Social-Media-Teilkarten
 - Live-Anzeige «Sonnenproduktion jetzt»
 - E-Auto-/Heizungs-Spaltennamen nach erstem Live-Betrieb fixieren
+
+## Grafik-Assets
+
+- **Skyline** (`Stadt`/`Skyline` in `App.jsx`): stilisierte Rotkreuzer Wahrzeichen
+  v.l.n.r.: Dorfkirche St. Verena (Risch), Schloss Buonas, Bauernhaus
+  Holzhäusern, Bahnhof Rotkreuz mit roter S-Bahn, rotes Wegkreuz (Namensgeber!),
+  Kirche Rotkreuz, Suurstoffi/Campus HSLU, Holzhochhaus Arbo, Aglaya mit
+  begrünten Terrassen, Wohnquartier; Hintergrund Rigi + Zugersee.
+  S-Bahn und Wegkreuz bleiben in beiden Zuständen rot (Wiedererkennungs-Anker).
+- **Wappen**: offizielles Gemeindewappen als Data-URI-Konstante `WAPPEN` am
+  Dateiende (9 KB, quantisiert; Quelle Wikimedia Commons, zusätzlich als
+  `public/wappen-risch.png`). Positioniert rechts oben im Seitenkopf
+  (`.wappen-img`). Für die finale Website: offizielle Datei + Verwendungs-OK
+  bei der Gemeindekanzlei anfragen, dann ggf. austauschen.
+
+## Offenes Feedback (Lukas, Juli 2026) — noch NICHT umgesetzt
+
+- Byline «Vorgestellt von Verein Elekt-Risch»: Schreibweise «Elekt-Risch» bestätigen lassen
+- Sommertag-Abschnitt: Unklar, welche «Box» weggelassen werden soll (dritte
+  Balkenzeile E-Autos? Fazit-Box?); zusätzlich Wintertag-Balken (~25 % des
+  Sommerertrags) einbauen, sobald geklärt
+- Kleine Notizen unter den Schieber-Ergebniskarten (evtl. Einheiten zusätzlich
+  in kWh erklären, «Ende 2025/2035»?): Bedeutung beim Team nachfragen

@@ -183,42 +183,116 @@ async function fetchCsvFromZip(urls, namePart) {
   throw lastError;
 }
 
-/* ---------- Dach-Silhouette (Signatur-Element) ---------- */
-const HOUSES = [
-  { x: 0, w: 74, h: 52 }, { x: 84, w: 60, h: 70 }, { x: 154, w: 92, h: 44 },
-  { x: 256, w: 56, h: 84 }, { x: 322, w: 110, h: 58 }, { x: 442, w: 66, h: 96 },
-  { x: 518, w: 88, h: 50 }, { x: 616, w: 120, h: 74 }, { x: 746, w: 62, h: 46 },
-  { x: 818, w: 96, h: 62 }, { x: 924, w: 76, h: 88 },
-];
+/* ---------- Rotkreuzer Skyline (Signatur-Element) ---------- */
+// Wahrzeichen v.l.n.r.: Dorfkirche St. Verena (Risch), Schloss Buonas,
+// Bauernhaus Holzhaeusern, Bahnhof Rotkreuz mit roter S-Bahn, das
+// namensgebende rote Wegkreuz, Kirche Rotkreuz, Suurstoffi/Campus HSLU,
+// Holzhochhaus Arbo, Aglaya mit begruenten Terrassen, Wohnquartier.
+// Im Hintergrund: Rigi mit Sendeturm und ein Streifen Zugersee.
+function Stadt() {
+  return (
+    <>
+      {/* Dorfkirche St. Verena, Risch */}
+      <rect className="wand" x="30" y="135" width="52" height="35" />
+      <polygon className="dach" points="26,135 86,135 56,118" />
+      <rect className="wand" x="12" y="95" width="21" height="75" />
+      <polygon className="dach" points="8,95 37,95 22.5,60" />
+      <path className="lin" d="M22.5,60 V50 M17.5,55 H27.5" />
+      <circle className="deko" cx="22.5" cy="105" r="4" />
+      {/* Schloss Buonas */}
+      <rect className="wand" x="112" y="100" width="26" height="70" />
+      <polygon className="dach" points="106,100 144,100 125,70" />
+      <path className="lin" d="M125,70 V59" />
+      <polygon className="rot" points="125,59 137,62 125,66" />
+      <rect className="wand" x="144" y="122" width="52" height="48" />
+      <polygon className="dach" points="140,122 200,122 186,104 154,104" />
+      {/* Bauernhaus Holzhaeusern */}
+      <rect className="wand" x="216" y="132" width="62" height="38" />
+      <polygon className="dach" points="208,132 286,132 247,104" />
+      <rect className="wand" x="286" y="144" width="22" height="26" />
+      <polygon className="dach" points="282,144 312,144 297,130" />
+      {/* Bahnhof Rotkreuz mit roter S-Bahn */}
+      <rect className="wand" x="330" y="126" width="72" height="44" />
+      <rect className="pv" x="325" y="118" width="82" height="8" />
+      <circle className="deko" cx="366" cy="140" r="5" />
+      <path className="lin" d="M412,148 h60 M418,148 v22 M466,148 v22" />
+      <path className="duenn" d="M300,175 H492" />
+      <rect className="rot" x="410" y="153" width="20" height="15" rx="3.5" />
+      <rect className="rot" x="433" y="153" width="20" height="15" rx="3.5" />
+      <rect className="rot" x="456" y="153" width="14" height="15" rx="3.5" />
+      <path className="duenn" d="M414,153 L420,146 L426,153" />
+      {/* Rotes Wegkreuz - Namensgeber von Rotkreuz */}
+      <path className="rotlin" d="M482,170 V146 M475,153 H489" />
+      {/* Kirche Rotkreuz */}
+      <rect className="wand" x="498" y="90" width="19" height="80" />
+      <path className="lin" d="M507.5,90 V78 M502.5,83 H512.5" />
+      <rect className="wand" x="521" y="128" width="52" height="42" />
+      <polygon className="dach" points="517,128 577,128 547,110" />
+      {/* Suurstoffi / Campus HSLU */}
+      <rect className="wand" x="592" y="118" width="34" height="52" />
+      <rect className="pv" x="592" y="113" width="34" height="5" />
+      <rect className="wand" x="630" y="104" width="40" height="66" />
+      <rect className="pv" x="630" y="99" width="40" height="5" />
+      <rect className="wand" x="674" y="126" width="28" height="44" />
+      <rect className="pv" x="674" y="121" width="28" height="5" />
+      {/* Holzhochhaus Arbo */}
+      <rect className="wand" x="716" y="52" width="60" height="118" />
+      <rect className="pv" x="716" y="46" width="60" height="6" />
+      <path className="duenn" d="M728,56 V166 M740,56 V166 M752,56 V166 M764,56 V166 M716,82 H776 M716,110 H776 M716,138 H776" />
+      {/* Aglaya, Variante A: schmaler Sockel, auskragender Turm (unten schmal,
+          oben breit), Schulter links tiefer, Hauptturm rechts hoeher,
+          runde Ecken, Balkonbaender, Baeume auf beiden Daechern */}
+      <polygon className="wand" points="826,170 826,138 829,134 857,134 860,138 860,170" />
+      <path className="duenn" d="M833,140 V166 M841,140 V166 M849,140 V166 M827,148 H859 M827,158 H859" />
+      <polygon className="wand" points="829,134 857,134 874,124 812,124" />
+      <rect className="wand" x="812" y="50" width="36" height="74" rx="5" />
+      <rect className="wand" x="844" y="27" width="34" height="97" rx="5" />
+      <path className="duenn" d="M814,58 H844 M814,66 H844 M814,74 H844 M814,82 H844 M814,90 H844 M814,98 H844 M814,106 H844 M814,114 H844 M846,34 H876 M846,42 H876 M846,50 H876 M846,58 H876 M846,66 H876 M846,74 H876 M846,82 H876 M846,90 H876 M846,98 H876 M846,106 H876 M846,114 H876" />
+      <circle className="wand" cx="812" cy="62" r="2.5" />
+      <circle className="wand" cx="812" cy="84" r="2.5" />
+      <circle className="wand" cx="812" cy="106" r="2.5" />
+      <circle className="wand" cx="878" cy="46" r="2.5" />
+      <circle className="wand" cx="878" cy="74" r="2.5" />
+      <circle className="wand" cx="878" cy="102" r="2.5" />
+      <rect className="pv" x="814" y="47" width="32" height="3.5" />
+      <rect className="pv" x="846" y="24" width="30" height="3.5" />
+      <circle className="gruen" cx="820" cy="44" r="3.5" />
+      <circle className="gruen" cx="829" cy="42" r="4" />
+      <circle className="gruen" cx="839" cy="44" r="3" />
+      <circle className="gruen" cx="852" cy="21" r="3.5" />
+      <circle className="gruen" cx="861" cy="19" r="4" />
+      <circle className="gruen" cx="871" cy="21" r="3" />
+      <circle className="gruen" cx="812" cy="74" r="2" />
+      <circle className="gruen" cx="812" cy="96" r="2" />
+      <circle className="gruen" cx="878" cy="60" r="2" />
+      <circle className="gruen" cx="878" cy="88" r="2" />
+      {/* Wohnquartier */}
+      <rect className="wand" x="916" y="128" width="70" height="42" />
+      <polygon className="dach" points="910,128 992,128 951,110" />
+    </>
+  );
+}
 
 function Skyline({ pct }) {
   const t = Math.max(0, Math.min(1, pct / 100));
   const sunX = 50 + 900 * t;
-  const sunY = 96 - 78 * Math.sin(Math.PI * (0.12 + 0.76 * t));
-  const roofs = HOUSES.map((h, i) => {
-    const yTop = 150 - h.h;
-    return (
-      <g key={i}>
-        <rect x={h.x} y={yTop} width={h.w} height={h.h} />
-        <polygon
-          points={`${h.x - 5},${yTop} ${h.x + h.w + 5},${yTop} ${h.x + h.w / 2},${yTop - 22}`}
-        />
-      </g>
-    );
-  });
+  const sunY = 110 - 85 * Math.sin(Math.PI * (0.12 + 0.76 * t));
   return (
-    <svg viewBox="0 0 1000 152" className="skyline" role="img"
-      aria-label={`Dach-Silhouette: ${pct} Prozent des Solarpotenzials belegt`}>
+    <svg viewBox="0 0 1000 200" className="skyline" role="img"
+      aria-label={`Rotkreuzer Skyline: ${pct} Prozent des Solarpotenzials belegt`}>
       <defs>
         <clipPath id="fillclip">
-          <rect x="0" y="0" width={1000 * t} height="152" />
+          <rect x="0" y="0" width={1000 * t} height="200" />
         </clipPath>
       </defs>
+      <polygon className="rigi" points="0,170 0,140 180,128 380,118 600,92 758,58 830,74 886,64 1000,112 1000,170" />
+      <path className="duenn" d="M758,58 V36" />
+      <rect className="see" x="0" y="164" width="200" height="6" />
       <circle cx={sunX} cy={sunY} r="17" className="sun" />
       <circle cx={sunX} cy={sunY} r="26" className="sun-halo" />
-      <g className="roof-base">{roofs}</g>
-      <g className="roof-solar" clipPath="url(#fillclip)">{roofs}</g>
-      <line x1="0" y1="151" x2="1000" y2="151" className="ground" />
+      <g className="b"><Stadt /></g>
+      <g className="s" clipPath="url(#fillclip)"><Stadt /></g>
+      <line x1="0" y1="170" x2="1000" y2="170" className="ground" />
     </svg>
   );
 }
@@ -233,13 +307,13 @@ function Stat({ value, unit, label }) {
   );
 }
 
-function Bar({ label, mwh, max, tone, note }) {
+function Bar({ label, mwh, max, tone, note, unit = "MWh" }) {
   const w = Math.min(100, (mwh / max) * 100);
   return (
     <div className="dbar">
       <div className="dbar-head">
         <span>{label}</span>
-        <span className="mono">{f(mwh)} MWh</span>
+        <span className="mono">{f(mwh)} {unit}</span>
       </div>
       <div className="dbar-track">
         <div className={`dbar-fill ${tone}`} style={{ width: `${w}%` }} />
@@ -468,21 +542,42 @@ export default function SolarRechnerRisch() {
         .badge-dot.loading{background:var(--amber);animation:pulse 1.2s infinite}
         @keyframes pulse{50%{opacity:.35}}
 
-        header{padding:56px 0 8px}
+        header{padding:56px 0 8px;position:relative}
+        header h1{padding-right:clamp(110px,17vw,175px)}
+        .wappen-img{position:absolute;top:48px;right:0;width:clamp(96px,14vw,150px);height:auto;
+          filter:drop-shadow(0 3px 8px rgba(16,41,63,.22))}
         .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:30px 0 8px}
         .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
         .stat-value{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600}
         .stat-unit{font-size:15px;margin-left:5px;color:var(--ink-soft);font-weight:500}
         .stat-label{font-size:13.5px;color:var(--ink-soft);margin-top:4px}
+        .stat-label a{color:var(--amber-deep);font-weight:600}
+        .nutzen{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+        .nutzen-chip{background:var(--ink);color:#F4EFE2;border-radius:99px;padding:8px 16px;
+          font-weight:600;font-size:14.5px}
 
         section{padding:44px 0}
         .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px}
         .subtle{color:var(--ink-soft);font-size:14.5px}
 
         .skyline{width:100%;height:auto;display:block;margin:8px 0 4px}
-        .roof-base rect,.roof-base polygon{fill:#C4D4DD}
-        .roof-solar rect{fill:var(--graphite)}
-        .roof-solar polygon{fill:var(--amber)}
+        .skyline .lin,.skyline .duenn,.skyline .rotlin{fill:none;stroke-linecap:round}
+        .skyline .lin{stroke-width:3}
+        .skyline .duenn{stroke-width:1.6}
+        .skyline .rotlin{stroke:#C0392B;stroke-width:4.5}
+        .skyline .rot{fill:#C0392B}
+        .skyline .rigi{fill:#DCE8EF}
+        .skyline .see{fill:#C6DDEB}
+        .skyline .b .wand,.skyline .b .dach,.skyline .b .pv,.skyline .b .gruen{fill:#C4D4DD}
+        .skyline .b .deko{fill:#EDF3F6}
+        .skyline .b .lin{stroke:#A9BDC9}
+        .skyline .b .duenn{stroke:#B9CBD6}
+        .skyline .s .wand{fill:var(--graphite)}
+        .skyline .s .dach,.skyline .s .pv{fill:var(--amber)}
+        .skyline .s .gruen{fill:var(--green)}
+        .skyline .s .deko{fill:#EDF3F6}
+        .skyline .s .lin{stroke:var(--graphite)}
+        .skyline .s .duenn{stroke:#39434D}
         .sun{fill:var(--amber)}
         .sun-halo{fill:var(--amber);opacity:.18}
         .ground{stroke:var(--ink);stroke-width:2}
@@ -583,6 +678,7 @@ export default function SolarRechnerRisch() {
       <div className="wrap">
         {/* ---------- HERO ---------- */}
         <header>
+          <img className="wappen-img" src={WAPPEN} alt="Wappen der Gemeinde Risch" />
           <div className="eyebrow">Verein Elektrisch · Gemeinde Risch</div>
           <h1>Wie viel Sonne steckt in unseren Dächern?</h1>
           <p className="lead">
@@ -590,18 +686,22 @@ export default function SolarRechnerRisch() {
             was unsere Dächer heute leisten, was möglich wäre – und was uns das kosten würde.
             Alle Werte sind sorgfältige Näherungen; die Annahmen finden Sie ganz unten.
           </p>
+          <div className="nutzen" aria-label="Worum es geht">
+            <span className="nutzen-chip">Gute Luft für uns.</span>
+            <span className="nutzen-chip">Jobs für uns.</span>
+            <span className="nutzen-chip">Einer der wenigen Fälle, in denen alle gewinnen.</span>
+          </div>
           <div className="badge" role="status">
             <span className={`badge-dot ${status}`} />
             {statusText}
           </div>
           <div className="statgrid">
-            <Stat value="64.6" unit="GWh/Jahr" label="Solarstrom-Potenzial aller geeigneten Dächer (BFE, Ausgabe 2025)" />
+            <Stat value="64.6" unit="GWh/Jahr" label="Solarstrom-Potenzial aller geeigneten Dächer in der Gemeinde (BFE, Ausgabe 2025)" />
             <Stat
               value={`≈ ${f(base.heuteGWh, 1)}`} unit="GWh/Jahr"
-              label={`heute produziert – rund ${base.heutePct} % des Potenzials${live?.installedKwp ? ` (${f(live.installedKwp / 1000, 1)} MWp installiert)` : ""}`}
+              label={<>heute produziert – rund {base.heutePct} % des Potenzials{live?.installedKwp ? ` (${f(live.installedKwp / 1000, 1)} MWp installiert)` : ""} · <a href="https://www.energiereporter.ch" target="_blank" rel="noreferrer">Quelle: Energie Reporter</a></>}
             />
-            <Stat value={f(base.stromGWh, 0)} unit="GWh/Jahr" label="Stromverbrauch der ganzen Gemeinde inkl. Wärmepumpen" />
-            <Stat value="290" unit="GWh/Jahr" label="gesamter Energieverbrauch inkl. Verkehr und Heizen (2021)" />
+            <Stat value={f(base.stromGWh, 0)} unit="GWh/Jahr" label="Stromverbrauch der ganzen Gemeinde" />
           </div>
         </header>
 
@@ -641,10 +741,6 @@ export default function SolarRechnerRisch() {
               <div className="res green">
                 <div className="res-big">{f(c.pctElektrifiziert, 0)} %</div>
                 <div className="res-lbl">des Bedarfs, wenn Heizen &amp; Autofahren elektrisch sind (~120 GWh)</div>
-              </div>
-              <div className="res blue">
-                <div className="res-big">≈ {f(c.netto / 1e6, 0)} Mio</div>
-                <div className="res-lbl">CHF Investition für diesen Ausbau (Details im Kostenrechner)</div>
               </div>
             </div>
             <p className="subtle" style={{ marginTop: 16 }}>
@@ -690,7 +786,7 @@ export default function SolarRechnerRisch() {
 
         {/* ---------- HISTORIE ---------- */}
         <section>
-          <h2>Der Verlauf: langsam, aber stetig</h2>
+          <h2>Schritt für Schritt zu mehr Strom</h2>
           <p className="subtle" style={{ maxWidth: 640 }}>
             Solarstromproduktion in der Gemeinde Risch pro Jahr. Wo verfügbar, stammen die
             Werte direkt aus der monatlichen Historisierung des Energie Reporters
@@ -807,6 +903,19 @@ export default function SolarRechnerRisch() {
             Das volle Dachpotenzial entspräche {f((D.potenzialDachGWh / base.stromGWh) * 100, 0)} %
             des heutigen Stromverbrauchs – und über der Hälfte des Bedarfs einer
             vollständig elektrifizierten Gemeinde.
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <strong>Wieviel Strom braucht die Energiewende in Risch?</strong>
+            <p className="subtle" style={{ marginTop: 6 }}>
+              Werden Heizen und Autofahren elektrisch, steigt der Strombedarf –
+              unsere Dächer könnten mehr als die Hälfte davon liefern.
+            </p>
+            <Bar label="Stromverbrauch heute" mwh={base.stromGWh} max={140} tone="blue" unit="GWh"
+              note="Haushalte, Gewerbe, Industrie – gemessener Jahresverbrauch" />
+            <Bar label="Strombedarf bei vollzogener Energiewende" mwh={D.elektrifiziertGWh} max={140} tone="slate" unit="GWh"
+              note="Modell: fossile Heizungen durch Wärmepumpen ersetzt, Strassenverkehr elektrisch (±20 GWh)" />
+            <Bar label="Solarstrom-Potenzial unserer Dächer" mwh={D.potenzialDachGWh} max={140} tone="amber" unit="GWh"
+              note="Dazu kämen Fassaden (bis 88.8 GWh total), Wasserkraft und Importe für den Rest" />
           </div>
         </section>
 
@@ -1015,9 +1124,14 @@ export default function SolarRechnerRisch() {
           Quellen: Energie Reporter (www.energiereporter.ch) – Daten: geoimpact AG /
           EnergieSchweiz, CC BY 4.0 · BFE Sonnendach.ch (Solarpotenziale der Schweizer
           Gemeinden, opendata.swiss) · Energie- und Klimastrategie Gemeinde Risch 2025 ·
-          Swissolar &amp; EnergieSchweiz Marktbeobachtung. Alle Angaben sind Näherungen ohne Gewähr.
+          Swissolar &amp; EnergieSchweiz Marktbeobachtung. Wappen: Gemeinde Risch (Quelle: Wikimedia Commons). Alle Angaben sind Näherungen ohne Gewähr.
         </footer>
       </div>
     </div>
   );
 }
+
+/* Offizielles Gemeindewappen Risch (Quelle: Wikimedia Commons).
+   Als Data-URI eingebettet, damit es auch im Claude-Artefakt erscheint.
+   Kann durch die offizielle Datei der Gemeindekanzlei ersetzt werden. */
+const WAPPEN = "data:image/png;base64,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";
