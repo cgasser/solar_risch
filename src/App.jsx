@@ -192,64 +192,72 @@ async function fetchCsvFromZip(urls, namePart) {
 function Stadt() {
   return (
     <>
-      {/* Dorfkirche St. Verena, Risch */}
-      <rect className="wand" x="30" y="135" width="52" height="35" />
-      <polygon className="dach" points="26,135 86,135 56,118" />
-      <rect className="wand" x="12" y="95" width="21" height="75" />
-      <polygon className="dach" points="8,95 37,95 22.5,60" />
-      <path className="lin" d="M22.5,60 V50 M17.5,55 H27.5" />
-      <circle className="deko" cx="22.5" cy="105" r="4" />
-      {/* Schloss Buonas */}
-      <rect className="wand" x="112" y="100" width="26" height="70" />
-      <polygon className="dach" points="106,100 144,100 125,70" />
-      <path className="lin" d="M125,70 V59" />
-      <polygon className="rot" points="125,59 137,62 125,66" />
-      <rect className="wand" x="144" y="122" width="52" height="48" />
-      <polygon className="dach" points="140,122 200,122 186,104 154,104" />
-      {/* Bauernhaus Holzhaeusern */}
-      <rect className="wand" x="216" y="132" width="62" height="38" />
-      <polygon className="dach" points="208,132 286,132 247,104" />
-      <rect className="wand" x="286" y="144" width="22" height="26" />
-      <polygon className="dach" points="282,144 312,144 297,130" />
-      {/* Bahnhof Rotkreuz: Aufnahmegebaeude mit auskragendem Perrondach,
-          darunter die rote S-Bahn (Raeder auf der Grundlinie) */}
-      <rect className="wand" x="330" y="124" width="72" height="46" />
-      <rect className="pv" x="325" y="116" width="82" height="8" />
-      <circle className="deko" cx="341" cy="136" r="6" />
-      <path className="duenn" d="M341,136 V131 M341,136 H345" />
-      <rect className="deko" x="357" y="150" width="14" height="20" />
-      <rect className="deko" x="379" y="134" width="18" height="12" />
-      {/* Perrondach, bündig mit dem Dach des Gebaeudes */}
-      <rect className="dach" x="402" y="116" width="68" height="8" />
-      <path className="duenn" d="M467,124 V170" />
-      {/* S-Bahn: durchgehender Triebzug, Fensterband, Stromabnehmer */}
-      <rect className="rot" x="406" y="142" width="58" height="22" rx="5" />
-      <rect className="deko" x="411" y="147" width="48" height="7" />
-      <path className="duenn" d="M436,147 V154" />
-      <circle className="wand" cx="418" cy="167" r="3" />
-      <circle className="wand" cx="452" cy="167" r="3" />
-      <path className="duenn" d="M420,142 L426,134 L432,142 M422,134 H430" />
-      {/* Rotes Wegkreuz - Namensgeber von Rotkreuz */}
-      <path className="rotlin" d="M482,170 V146 M475,153 H489" />
-      {/* Kirche Rotkreuz */}
-      <rect className="wand" x="498" y="90" width="19" height="80" />
-      <path className="lin" d="M507.5,90 V78 M502.5,83 H512.5" />
-      <rect className="wand" x="521" y="128" width="52" height="42" />
-      <polygon className="dach" points="517,128 577,128 547,110" />
-      {/* Suurstoffi / Campus HSLU */}
-      <rect className="wand" x="592" y="118" width="34" height="52" />
-      <rect className="pv" x="592" y="113" width="34" height="5" />
-      <rect className="wand" x="630" y="104" width="40" height="66" />
-      <rect className="pv" x="630" y="99" width="40" height="5" />
-      <rect className="wand" x="674" y="126" width="28" height="44" />
-      <rect className="pv" x="674" y="121" width="28" height="5" />
-      {/* Holzhochhaus Arbo */}
-      <rect className="wand" x="716" y="52" width="60" height="118" />
-      <rect className="pv" x="716" y="46" width="60" height="6" />
-      <path className="duenn" d="M728,56 V166 M740,56 V166 M752,56 V166 M764,56 V166 M716,82 H776 M716,110 H776 M716,138 H776" />
+      <g><title>Dorfkirche St. Verena, Risch</title>
+        <rect className="wand" x="30" y="135" width="52" height="35" />
+        <polygon className="dach" points="26,135 86,135 56,118" />
+        <rect className="wand" x="12" y="95" width="21" height="75" />
+        <polygon className="dach" points="8,95 37,95 22.5,60" />
+        <path className="lin" d="M22.5,60 V50 M17.5,55 H27.5" />
+        <circle className="deko" cx="22.5" cy="105" r="4" />
+      </g>
+      <g><title>Schloss Buonas</title>
+        <rect className="wand" x="112" y="100" width="26" height="70" />
+        <polygon className="dach" points="106,100 144,100 125,70" />
+        <path className="lin" d="M125,70 V59" />
+        <polygon className="rot" points="125,59 137,62 125,66" />
+        <rect className="wand" x="144" y="122" width="52" height="48" />
+        <polygon className="dach" points="140,122 200,122 186,104 154,104" />
+      </g>
+      <g><title>Bauernhaus Holzhäusern</title>
+        <rect className="wand" x="216" y="132" width="62" height="38" />
+        <polygon className="dach" points="208,132 286,132 247,104" />
+        <rect className="wand" x="286" y="144" width="22" height="26" />
+        <polygon className="dach" points="282,144 312,144 297,130" />
+      </g>
+      {/* Aufnahmegebaeude mit auskragendem Perrondach, darunter die rote
+          S-Bahn (Raeder stehen auf der Grundlinie) */}
+      <g><title>Bahnhof Rotkreuz</title>
+        <rect className="wand" x="330" y="124" width="72" height="46" />
+        <rect className="pv" x="325" y="116" width="82" height="8" />
+        <circle className="deko" cx="341" cy="136" r="6" />
+        <path className="duenn" d="M341,136 V131 M341,136 H345" />
+        <rect className="deko" x="357" y="150" width="14" height="20" />
+        <rect className="deko" x="379" y="134" width="18" height="12" />
+        <rect className="dach" x="402" y="116" width="68" height="8" />
+        <path className="duenn" d="M467,124 V170" />
+        <rect className="rot" x="406" y="142" width="58" height="22" rx="5" />
+        <rect className="deko" x="411" y="147" width="48" height="7" />
+        <path className="duenn" d="M436,147 V154" />
+        <circle className="wand" cx="418" cy="167" r="3" />
+        <circle className="wand" cx="452" cy="167" r="3" />
+        <path className="duenn" d="M420,142 L426,134 L432,142 M422,134 H430" />
+      </g>
+      <g><title>Wegkreuz – Namensgeber von Rotkreuz</title>
+        <path className="rotlin" d="M482,170 V146 M475,153 H489" />
+      </g>
+      <g><title>Kirche Rotkreuz</title>
+        <rect className="wand" x="498" y="90" width="19" height="80" />
+        <path className="lin" d="M507.5,90 V78 M502.5,83 H512.5" />
+        <rect className="wand" x="521" y="128" width="52" height="42" />
+        <polygon className="dach" points="517,128 577,128 547,110" />
+      </g>
+      <g><title>Suurstoffi / Campus HSLU</title>
+        <rect className="wand" x="592" y="118" width="34" height="52" />
+        <rect className="pv" x="592" y="113" width="34" height="5" />
+        <rect className="wand" x="630" y="104" width="40" height="66" />
+        <rect className="pv" x="630" y="99" width="40" height="5" />
+        <rect className="wand" x="674" y="126" width="28" height="44" />
+        <rect className="pv" x="674" y="121" width="28" height="5" />
+      </g>
+      <g><title>Holzhochhaus Arbo</title>
+        <rect className="wand" x="716" y="52" width="60" height="118" />
+        <rect className="pv" x="716" y="46" width="60" height="6" />
+        <path className="duenn" d="M728,56 V166 M740,56 V166 M752,56 V166 M764,56 V166 M716,82 H776 M716,110 H776 M716,138 H776" />
+      </g>
       {/* Aglaya, Variante A: schmaler Sockel, auskragender Turm (unten schmal,
           oben breit), Schulter links tiefer, Hauptturm rechts hoeher,
           runde Ecken, Balkonbaender, Baeume auf beiden Daechern */}
+      <g><title>Aglaya, Suurstoffi</title>
       <polygon className="wand" points="826,170 826,138 829,134 857,134 860,138 860,170" />
       <path className="duenn" d="M833,140 V166 M841,140 V166 M849,140 V166 M827,148 H859 M827,158 H859" />
       <polygon className="wand" points="829,134 857,134 874,124 812,124" />
@@ -274,18 +282,37 @@ function Stadt() {
       <circle className="gruen" cx="812" cy="96" r="2" />
       <circle className="gruen" cx="878" cy="60" r="2" />
       <circle className="gruen" cx="878" cy="88" r="2" />
-      {/* Wohnquartier */}
-      <rect className="wand" x="916" y="128" width="70" height="42" />
-      <polygon className="dach" points="910,128 992,128 951,110" />
+      </g>
+      <g><title>Wohnquartier Rotkreuz</title>
+        <rect className="wand" x="916" y="128" width="70" height="42" />
+        <polygon className="dach" points="910,128 992,128 951,110" />
+      </g>
     </>
   );
 }
 
+// Wahrzeichen mit ihrer Spalte in der Skyline. Einzige Quelle fuer die
+// Legende UND die Hitboxen - beide bleiben so automatisch synchron.
+const WAHRZEICHEN = [
+  { name: "Dorfkirche St. Verena", x: 0, w: 100 },
+  { name: "Schloss Buonas", x: 100, w: 108 },
+  { name: "Bauernhaus Holzhäusern", x: 208, w: 112 },
+  { name: "Bahnhof Rotkreuz", x: 320, w: 154 },
+  { name: "Wegkreuz", x: 474, w: 20 },
+  { name: "Kirche Rotkreuz", x: 494, w: 91 },
+  { name: "Suurstoffi/Campus HSLU", x: 585, w: 123 },
+  { name: "Holzhochhaus Arbo", x: 708, w: 86 },
+  { name: "Aglaya", x: 794, w: 106 },
+  { name: "Wohnquartier", x: 900, w: 100 },
+];
+
 function Skyline({ pct }) {
+  const [aktiv, setAktiv] = useState(null);
   const t = Math.max(0, Math.min(1, pct / 100));
   const sunX = 50 + 900 * t;
   const sunY = 110 - 85 * Math.sin(Math.PI * (0.12 + 0.76 * t));
   return (
+    <>
     <svg viewBox="0 0 1000 200" className="skyline" role="img"
       aria-label={`Rotkreuzer Skyline: ${pct} Prozent des Solarpotenzials belegt`}>
       <defs>
@@ -301,7 +328,30 @@ function Skyline({ pct }) {
       <g className="b"><Stadt /></g>
       <g className="s" clipPath="url(#fillclip)"><Stadt /></g>
       <line x1="0" y1="170" x2="1000" y2="170" className="ground" />
+      {/* Markierung unter der Grundlinie: zeigt, welches Wahrzeichen gemeint ist */}
+      {aktiv !== null && (
+        <rect className="wz-mark" x={WAHRZEICHEN[aktiv].x + 4} y="173"
+          width={WAHRZEICHEN[aktiv].w - 8} height="3" rx="1.5" />
+      )}
+      {/* Transparente Spalten - fangen die Maus auch ueber den Luecken */}
+      {WAHRZEICHEN.map((w, i) => (
+        <rect key={w.name} x={w.x} y="0" width={w.w} height="178"
+          fill="transparent" className="wz-hit"
+          onMouseEnter={() => setAktiv(i)} onMouseLeave={() => setAktiv(null)} />
+      ))}
     </svg>
+    <p className="skyline-legende">
+      {WAHRZEICHEN.map((w, i) => (
+        <span key={w.name}>
+          {i > 0 && <span className="wz-sep"> · </span>}
+          <span className={"wz-name" + (aktiv === i ? " ist-aktiv" : "")}
+            onMouseEnter={() => setAktiv(i)} onMouseLeave={() => setAktiv(null)}>
+            {w.name}
+          </span>
+        </span>
+      ))}
+    </p>
+    </>
   );
 }
 
@@ -569,6 +619,12 @@ export default function SolarRechnerRisch() {
         .subtle{color:var(--ink-soft);font-size:14.5px}
 
         .skyline{width:100%;height:auto;display:block;margin:8px 0 4px}
+        .skyline-legende{font-size:11.5px;line-height:1.7;color:var(--ink-soft);margin:0 0 4px;letter-spacing:.01em}
+        .skyline-legende .wz-sep{opacity:.45}
+        .wz-name{opacity:.7;padding:1px 2px;border-radius:3px;transition:opacity .12s,background .12s,color .12s}
+        .wz-name.ist-aktiv{opacity:1;color:var(--ink);background:color-mix(in srgb,var(--amber) 20%,transparent)}
+        .wz-hit{cursor:help}
+        .wz-mark{fill:var(--amber)}
         .skyline .lin,.skyline .duenn,.skyline .rotlin{fill:none;stroke-linecap:round}
         .skyline .lin{stroke-width:3}
         .skyline .duenn{stroke-width:1.6}
