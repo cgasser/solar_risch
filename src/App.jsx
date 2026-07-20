@@ -211,16 +211,24 @@ function Stadt() {
       <polygon className="dach" points="208,132 286,132 247,104" />
       <rect className="wand" x="286" y="144" width="22" height="26" />
       <polygon className="dach" points="282,144 312,144 297,130" />
-      {/* Bahnhof Rotkreuz mit roter S-Bahn */}
-      <rect className="wand" x="330" y="126" width="72" height="44" />
-      <rect className="pv" x="325" y="118" width="82" height="8" />
-      <circle className="deko" cx="366" cy="140" r="5" />
-      <path className="lin" d="M412,148 h60 M418,148 v22 M466,148 v22" />
-      <path className="duenn" d="M300,175 H492" />
-      <rect className="rot" x="410" y="153" width="20" height="15" rx="3.5" />
-      <rect className="rot" x="433" y="153" width="20" height="15" rx="3.5" />
-      <rect className="rot" x="456" y="153" width="14" height="15" rx="3.5" />
-      <path className="duenn" d="M414,153 L420,146 L426,153" />
+      {/* Bahnhof Rotkreuz: Aufnahmegebaeude mit auskragendem Perrondach,
+          darunter die rote S-Bahn (Raeder auf der Grundlinie) */}
+      <rect className="wand" x="330" y="124" width="72" height="46" />
+      <rect className="pv" x="325" y="116" width="82" height="8" />
+      <circle className="deko" cx="341" cy="136" r="6" />
+      <path className="duenn" d="M341,136 V131 M341,136 H345" />
+      <rect className="deko" x="357" y="150" width="14" height="20" />
+      <rect className="deko" x="379" y="134" width="18" height="12" />
+      {/* Perrondach, bündig mit dem Dach des Gebaeudes */}
+      <rect className="dach" x="402" y="116" width="68" height="8" />
+      <path className="duenn" d="M467,124 V170" />
+      {/* S-Bahn: durchgehender Triebzug, Fensterband, Stromabnehmer */}
+      <rect className="rot" x="406" y="142" width="58" height="22" rx="5" />
+      <rect className="deko" x="411" y="147" width="48" height="7" />
+      <path className="duenn" d="M436,147 V154" />
+      <circle className="wand" cx="418" cy="167" r="3" />
+      <circle className="wand" cx="452" cy="167" r="3" />
+      <path className="duenn" d="M420,142 L426,134 L432,142 M422,134 H430" />
       {/* Rotes Wegkreuz - Namensgeber von Rotkreuz */}
       <path className="rotlin" d="M482,170 V146 M475,153 H489" />
       {/* Kirche Rotkreuz */}
