@@ -38,6 +38,7 @@ jobs:
         run: npm run build
         env:
           BASE_PATH: /solar_risch/
+          NOINDEX: "1"
 
       - name: Pages-Artefakt hochladen
         uses: actions/upload-pages-artifact@v3

@@ -37,7 +37,9 @@ nur gebaut, nicht hochgeladen (Stand Okt. 2026: Secrets noch nicht gesetzt).
 
 Vorschau zusätzlich auf **GitHub Pages** (`.github/workflows/pages.yml`) unter
 https://cgasser.github.io/solar_risch/ — gebaut mit `BASE_PATH=/solar_risch/`
-(siehe `vite.config.js`). Dort läuft kein PHP: Proxy-Abruf ergibt 404, die App
+(siehe `vite.config.js`). Mit `NOINDEX=1` bekommt die Vorschau ein
+`<meta name="robots" content="noindex">` — sie ist «versteckt», aber **nicht
+geschützt**: Wer den Link hat, sieht sie (Link geht an Lukas/Verein). Dort läuft kein PHP: Proxy-Abruf ergibt 404, die App
 fällt auf Direktabruf/Fallback zurück (Badge).
 
 ## Datenarchitektur (wichtig)
