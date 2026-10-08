@@ -32,7 +32,13 @@ public/api/energiereporter.php   Daten-Proxy mit 12h-Cache; wird von Vite 1:1 na
 Push auf `main` deployt automatisch (GitHub Actions → rsync über SSH zu
 Infomaniak). Secrets im Repo: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
 (ed25519!), `DEPLOY_PATH`. **Achtung:** rsync läuft mit `--delete` — falscher
-`DEPLOY_PATH` löscht fremde Dateien im Zielordner.
+`DEPLOY_PATH` löscht fremde Dateien im Zielordner. Ohne `DEPLOY_SSH_KEY` wird
+nur gebaut, nicht hochgeladen (Stand Okt. 2026: Secrets noch nicht gesetzt).
+
+Vorschau zusätzlich auf **GitHub Pages** (`.github/workflows/pages.yml`) unter
+https://cgasser.github.io/solar_risch/ — gebaut mit `BASE_PATH=/solar_risch/`
+(siehe `vite.config.js`). Dort läuft kein PHP: Proxy-Abruf ergibt 404, die App
+fällt auf Direktabruf/Fallback zurück (Badge).
 
 ## Datenarchitektur (wichtig)
 

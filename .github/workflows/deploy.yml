@@ -17,6 +17,9 @@ on:
 jobs:
   build-und-deploy:
     runs-on: ubuntu-latest
+    # Solange die Secrets fehlen, wird gebaut, aber nicht hochgeladen
+    env:
+      HAS_DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY != '' }}
     steps:
       - name: Code holen
         uses: actions/checkout@v4
@@ -34,6 +37,7 @@ jobs:
         run: npm run build
 
       - name: Auf Infomaniak hochladen (rsync über SSH)
+        if: env.HAS_DEPLOY_KEY == 'true'
         uses: burnett01/rsync-deployments@7.1.0
         with:
           switches: -avzr --delete
