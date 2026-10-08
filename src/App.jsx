@@ -35,6 +35,10 @@ const LIVE = {
 const D = {
   potenzialDachGWh: 64.6,      // BFE Sonnendach, Ausgabe 2025, nur Dächer
   potenzialFassadeGWh: 88.83,  // BFE 2025, Dächer + Fassaden
+  fassadeGWh: 24.23,           // = 88.83 − 64.6, Fassaden allein
+  fassadeKWhProKWp: 650,       // senkrechte Module, Mix S/O/W (Spanne 550–750)
+  fassadeSommerFaktor: 0.28,   // BFE-Monatswerte Risch: Juni Fassade = 28 % der Dachproduktion
+  fassadeWinterFaktor: 0.62,   // Dezember: 62 % – tiefe Wintersonne trifft senkrechte Flächen
   ertragKWhProKWp: 950,        // spezifischer Ertrag Mittelland (±10 %)
   heuteAnteilPct: 18,          // genutzter Anteil Dachpotenzial (Energie Reporter, Okt. 2026)
   stromHeuteGWh: 70,           // Strom inkl. Wärmepumpen, Boiler, E-Autos
@@ -148,6 +152,8 @@ const LINKS = {
   energieReporter: "https://opendata.swiss/de/dataset/energie-reporter",
   sonnendachRisch: "https://www.uvek-gis.admin.ch/BFE/storymaps/ECH_SolarpotGemeinden/pdf/1707.pdf",
   sonnendach: "https://www.sonnendach.ch",
+  bfeGemeinden: "https://opendata.swiss/de/dataset/solarenergiepotenziale-der-schweizer-gemeinden",
+  ckwFassade: "https://www.ckw.ch/energie/photovoltaik/pv-fassade",
   strategieRisch: "https://www.zg.ch/behoerden/gemeinden/risch-rotkreuz/projekte-test/energie-und-klimastrategie/unterlagen/energie-und-klimastrategie/download",
   preisstudie: "https://pubdb.bfe.admin.ch/de/publication/download/12694",
   swissolarFakten: "https://www.swissolar.ch/02_markt-politik/faktenblatt/de_2025_faktenblatt_pv_schweiz_sws.pdf",
@@ -567,6 +573,7 @@ export default function SolarRechnerRisch() {
   const [eiv, setEiv] = useState(true);
   const [zieljahr, setZieljahr] = useState(2040);
   const [saison, setSaison] = useState("sommer"); // sommer | winter
+  const [fassaden, setFassaden] = useState(false);
 
   // Live-Daten Energie Reporter
   const [status, setStatus] = useState("loading"); // loading | live | fallback
@@ -685,32 +692,48 @@ export default function SolarRechnerRisch() {
     setPct((p) => Math.max(p === D.heuteAnteilPct ? 0 : p, base.heutePct));
   }, [base.heutePct]);
 
+  // Fassaden wachsen im Gleichschritt mit: beim heutigen Stand keine (heute
+  // praktisch ungenutzt), bei 100 % alle geeigneten Fassaden.
+  const fassAnteil = (p) =>
+    fassaden ? Math.max(0, (p - base.heutePct) / Math.max(1, 100 - base.heutePct)) : 0;
+  const tagSommerBei = (p) =>
+    base.potMWp * D.sommertagKWhProKWp * (p / 100 + fassAnteil(p) * D.fassadeSommerFaktor);
+
   const c = useMemo(() => {
-    const prodGWh = (pct / 100) * D.potenzialDachGWh;
-    const mwp = (pct / 100) * base.potMWp;
-    const addMWp = Math.max(0, ((pct - base.heutePct) / 100) * base.potMWp);
+    const ff = fassAnteil(pct);
+    const fassGWh = ff * D.fassadeGWh;
+    const fassMWp = (fassGWh * 1000) / D.fassadeKWhProKWp;
+    const prodGWh = (pct / 100) * D.potenzialDachGWh + fassGWh;
+    const mwpDach = (pct / 100) * base.potMWp;
+    const mwp = mwpDach + fassMWp;
+    const addMWpDach = Math.max(0, ((pct - base.heutePct) / 100) * base.potMWp);
+    const addMWp = addMWpDach + fassMWp;
     const p = PRICE[preis];
     const g = grossAnteil / 100;
-    const blended = p.klein * (1 - g) + p.gross * g;
-    const invest = addMWp * 1000 * blended;
+    const blendedDach = p.klein * (1 - g) + p.gross * g;
+    // Fassaden: pro kWp etwa zum Preis kleiner Dachanlagen (siehe Fehlerquellen)
+    const invest = addMWpDach * 1000 * blendedDach + fassMWp * 1000 * p.klein;
+    const blended = addMWp > 0 ? invest / (addMWp * 1000) : blendedDach;
     const foerder = eiv ? invest * D.eivFoerderung : 0;
     const netto = invest - foerder;
     const jahre = Math.max(1, zieljahr - 2026);
-    const tagSommerMWh = mwp * D.sommertagKWhProKWp;
-    const tagWinterMWh = mwp * D.wintertagKWhProKWp;
+    const tagSommerMWh = tagSommerBei(pct);
+    const tagWinterMWh =
+      base.potMWp * D.wintertagKWhProKWp * (pct / 100 + ff * D.fassadeWinterFaktor);
     return {
       prodGWh, mwp, addMWp, blended, invest, foerder, netto, jahre,
-      tagSommerMWh, tagWinterMWh,
+      fassGWh, fassMWp, tagSommerMWh, tagWinterMWh,
       pctStrom: (prodGWh / base.stromGWh) * 100,
       pctElektrifiziert: (prodGWh / D.elektrifiziertGWh) * 100,
       deckSommerHeute: (tagSommerMWh / base.sommertagStromMWh) * 100,
       deckWinterHeute: (tagWinterMWh / base.wintertagStromMWh) * 100,
     };
-  }, [pct, grossAnteil, preis, eiv, zieljahr, base]);
+  }, [pct, grossAnteil, preis, eiv, zieljahr, base, fassaden]);
 
-  const breakEvenPct = Math.ceil(
-    (base.sommertagStromMWh / (base.potMWp * D.sommertagKWhProKWp)) * 100
-  );
+  let breakEvenPct = 100;
+  for (let p = base.heutePct; p <= 100; p++) {
+    if (tagSommerBei(p) >= base.sommertagStromMWh) { breakEvenPct = p; break; }
+  }
 
   const history = useMemo(() => {
     return HISTORY_EST.map((h) => {
@@ -785,7 +808,7 @@ export default function SolarRechnerRisch() {
   // Unterschied zwischen Sommer- und Winterertrag beim Umschalten sichtbar.
   const tagMax = Math.max(
     base.wintertagElektrifiziertMWh,
-    base.potMWp * D.sommertagKWhProKWp
+    base.potMWp * D.sommertagKWhProKWp * (1 + D.fassadeSommerFaktor)
   ) * 1.06;
 
   const sommer = saison === "sommer";
@@ -793,7 +816,7 @@ export default function SolarRechnerRisch() {
     ? {
         prod: c.tagSommerMWh,
         prodLabel: `Solarproduktion an einem Sommertag (${pct} % Ausbau)`,
-        prodNote: `Annahme: ${D.sommertagKWhProKWp} kWh pro kWp und Tag – deckt ${f(c.deckSommerHeute, 0)} % des heutigen Tagesbedarfs`,
+        prodNote: `Annahme: ${D.sommertagKWhProKWp} kWh pro kWp und Tag${c.fassGWh > 0 ? ", Fassaden +28 % zur Dachproduktion" : ""} – deckt ${f(c.deckSommerHeute, 0)} % des heutigen Tagesbedarfs`,
         bedarf: base.sommertagStromMWh,
         bedarfLabel: "Strombedarf der Gemeinde an einem Sommertag – heute",
         bedarfNote: "Haushalte, Gewerbe, Industrie, Warmwasser (Heizung im Sommer kaum relevant)",
@@ -804,7 +827,7 @@ export default function SolarRechnerRisch() {
     : {
         prod: c.tagWinterMWh,
         prodLabel: `Solarproduktion an einem Wintertag (${pct} % Ausbau)`,
-        prodNote: `Annahme: ${D.wintertagKWhProKWp} kWh pro kWp und Tag – rund ein Viertel eines Sommertags, deckt ${f(c.deckWinterHeute, 0)} % des heutigen Tagesbedarfs`,
+        prodNote: `Annahme: ${D.wintertagKWhProKWp} kWh pro kWp und Tag – rund ein Viertel eines Sommertags${c.fassGWh > 0 ? "; Fassaden +62 % zur Dachproduktion" : ""}, deckt ${f(c.deckWinterHeute, 0)} % des heutigen Tagesbedarfs`,
         bedarf: base.wintertagStromMWh,
         bedarfLabel: "Strombedarf der Gemeinde an einem Wintertag – heute",
         bedarfNote: "Höher als im Sommer: kürzere Tage, mehr Licht und Warmwasser",
@@ -1047,22 +1070,34 @@ export default function SolarRechnerRisch() {
 
         {/* ---------- MASTER-SLIDER ---------- */}
         <section>
-          <h2>Drehen Sie die Sonne auf</h2>
+          <h2>Belegen Sie die Dächer mit Photovoltaik</h2>
           <p className="subtle" style={{ maxWidth: 620 }}>
             Der Regler steuert, wie viel des Dachpotenzials belegt ist. Er beginnt beim
             heutigen Stand und wirkt auf alle Rechnungen dieser Seite – auch auf den
-            Kostenrechner weiter unten.
+            Kostenrechner weiter unten. Auf Wunsch kommen die Fassaden dazu.
           </p>
           <div className="card" style={{ marginTop: 20 }}>
             <Skyline pct={pct} />
+            <div className="seg" role="group" aria-label="Flächen wählen">
+              <button
+                type="button" className={!fassaden ? "on" : ""} aria-pressed={!fassaden}
+                onClick={() => setFassaden(false)}
+              >Nur Dächer</button>
+              <button
+                type="button" className={fassaden ? "on" : ""} aria-pressed={fassaden}
+                onClick={() => setFassaden(true)}
+              >Dächer + Fassaden</button>
+            </div>
             <div className="slider-head">
-              <span style={{ fontWeight: 600 }}>Ausbaugrad des Dachpotenzials</span>
+              <span style={{ fontWeight: 600 }}>
+                {fassaden ? "Ausbaugrad von Dächern und Fassaden" : "Ausbaugrad des Dachpotenzials"}
+              </span>
               <span className="slider-val">{pct} %</span>
             </div>
             <input
               type="range" min={base.heutePct} max={100} step={1} value={pct}
               onChange={(e) => setPct(Number(e.target.value))}
-              aria-label="Ausbaugrad des Dachpotenzials in Prozent"
+              aria-label={fassaden ? "Ausbaugrad von Dächern und Fassaden in Prozent" : "Ausbaugrad des Dachpotenzials in Prozent"}
             />
             <div className="slider-scale">
               <span>{base.heutePct} % · heute</span>
@@ -1072,7 +1107,10 @@ export default function SolarRechnerRisch() {
             <div className="resgrid">
               <div className="res">
                 <div className="res-big">{f(c.prodGWh, 1)} GWh</div>
-                <div className="res-lbl">Solarstrom pro Jahr ({f(c.mwp, 0)} MWp installiert)</div>
+                <div className="res-lbl">
+                  Solarstrom pro Jahr ({f(c.mwp, 0)} MWp installiert
+                  {c.fassGWh > 0 ? `, davon ${f(c.fassGWh, 1)} GWh von Fassaden` : ""})
+                </div>
               </div>
               <div className="res blue">
                 <div className="res-big">{f(c.pctStrom, 0)} %</div>
@@ -1084,9 +1122,9 @@ export default function SolarRechnerRisch() {
               </div>
             </div>
             <p className="subtle" style={{ marginTop: 16 }}>
-              Zum Vergleich: Werden zusätzlich geeignete Fassaden genutzt, steigt das
-              Potenzial auf 88.8 GWh pro Jahr – mehr als der heutige Stromverbrauch der
-              ganzen Gemeinde.
+              {fassaden
+                ? `Mit Fassaden steigt das Potenzial auf ${f(D.potenzialFassadeGWh, 1)} GWh pro Jahr – mehr als der heutige Stromverbrauch der ganzen Gemeinde. Fassaden liefern pro kWp rund ein Drittel weniger als Dächer, dafür im Winter verhältnismässig viel: Im Dezember bringen sie 62 % zusätzlich zur Dachproduktion, im Juni nur 28 %. Sie wachsen hier im Gleichschritt mit den Dächern – heute sind sie praktisch ungenutzt.`
+                : `Werden zusätzlich geeignete Fassaden genutzt, steigt das Potenzial auf ${f(D.potenzialFassadeGWh, 1)} GWh pro Jahr – mehr als der heutige Stromverbrauch der ganzen Gemeinde. Schalten Sie oben «Dächer + Fassaden» ein.`}
             </p>
           </div>
         </section>
@@ -1323,7 +1361,7 @@ export default function SolarRechnerRisch() {
           <p className="subtle" style={{ maxWidth: 640 }}>
             Investition, um vom heutigen Stand ({base.heutePct} %) auf den oben gewählten
             Ausbaugrad von {pct} % zu kommen – das sind {f(c.addMWp, 1)} MWp zusätzliche
-            Anlagen. Getragen würden die Kosten grösstenteils von privaten
+            Anlagen{c.fassMWp > 0 ? `, davon ${f(c.fassMWp, 1)} MWp an Fassaden` : ""}. Getragen würden die Kosten grösstenteils von privaten
             Eigentümerschaften und Firmen, nicht von der Gemeindekasse.
           </p>
 
@@ -1417,6 +1455,18 @@ export default function SolarRechnerRisch() {
               Potenzial: nur gut geeignete Flächen, 70 % Belegung, Modulwirkungsgrad 20 %.
               <span className="subtle">Unsicherheit ±10–15 %. Bereits gebaute Anlagen sind im Potenzial enthalten. Denkmalschutz und bauliche Sonderfälle sind nicht abgezogen. Hinweis: Der Energie Reporter nutzt ein eigenes, leicht abweichendes Potenzialmodell – der Ausbaugrad hier wird einheitlich auf die 64.6 GWh des BFE bezogen.</span>
               <Quellen items={[["BFE-Faktenblatt Solarpotenzial Risch 2025 (PDF)", LINKS.sonnendachRisch], ["sonnendach.ch", LINKS.sonnendach]]} />
+            </div>
+            <div className="src-item">
+              <strong>Fassaden: +24.2 GWh pro Jahr (88.8 GWh mit Dächern)</strong>
+              BFE Sonnenfassade.ch, Gemeinde Risch, Ausgabe 2025: geeignete Fassadenflächen
+              ab 20 m², zu 45–60 % belegt, Abstand zu geschützten Ortsbildern (ISOS)
+              eingehalten. Saisonverlauf aus den BFE-Monatswerten für Risch: Fassaden liefern
+              im Juni 28 %, im Dezember 62 % zusätzlich zur Dachproduktion (Winterhalbjahr:
+              35 % ihres Jahresertrags, Dächer 25 %). Ertrag ~650 kWh pro kWp (Spanne 550–750);
+              Kosten pro kWp etwa wie kleine Dachanlagen – pro Kilowattstunde 40–50 % teurer
+              als auf dem Dach.
+              <span className="subtle">Im Rechner wachsen die Fassaden im Gleichschritt mit den Dächern (heute ≈ 0, bei 100 % alle geeigneten). Fassaden-PV wird meist im Zug einer Fassadensanierung gebaut und ersetzt dann andere Verkleidung – die Mehrkosten sind dann kleiner. Die Einmalvergütung wird pauschal gleich gerechnet (für senkrechte Anlagen gibt es einen Neigungswinkelbonus).</span>
+              <Quellen items={[["BFE-Faktenblatt Solarpotenzial Risch 2025 (PDF)", LINKS.sonnendachRisch], ["BFE-Monatswerte Gemeinden (opendata.swiss)", LINKS.bfeGemeinden], ["CKW: PV-Fassaden", LINKS.ckwFassade]]} />
             </div>
             <div className="src-item">
               <strong>Heute installiert: ≈ {f(base.heuteGWh, 1)} GWh ({base.heutePct} % des Potenzials)</strong>
