@@ -72,7 +72,11 @@ const HISTORY_EST = [
 // Schweizer Zubau 2023–2025 (Ø ≈ 1.6 GW/Jahr, Statistik Sonnenenergie 2025).
 const TREND = {
   zubauKWpProJahr: 2690, // Energie Reporter Risch: 4'549 kWp (Ende 2022) → 12'626 kWp (Ende 2025)
-  mwhProKWp: 0.86,       // Energie Reporter Sept. 2026: 11'573 MWh / 13'410 kWp
+  mwhProKWp: 0.86,
+  // Einmalige Grossanlage, aus dem Tempo herausgerechnet: Fredi Sidler Transport AG,
+  // Industriestrasse 21, knapp 1.8 MWp, Netzanschluss geplant Frühling 2023
+  // (Ankündigung Convoltas/Zug4you 2022; Inbetriebnahme nicht separat belegt).
+  einmalig: { jahr: 2023, kWp: 1800 },       // Energie Reporter Sept. 2026: 11'573 MWh / 13'410 kWp
   faktorBremse: 0.75,    // Bremsszenario: Zubau pendelt sich bei ~1.2 GW/Jahr ein
   faktorMittel: 1.13,    // Mittelszenario: bis 2029 zurück auf Rekord 2024 (~1.8 GW/Jahr)
   zielJahr: 2050,        // Gemeinde: Potenzial 2050 ausgeschöpft (Energie- und Klimastrategie)
@@ -149,6 +153,7 @@ const LINKS = {
   swissolarFakten: "https://www.swissolar.ch/02_markt-politik/faktenblatt/de_2025_faktenblatt_pv_schweiz_sws.pdf",
   pronovo: "https://pronovo.ch",
   statistikSonne: "https://www.swissolar.ch/_default_upload_bucket/12679-20260703_statistik_sonnenenergie_2025_bericht_de_def.pdf",
+  sidler: "https://www.zug4you.ch/en/news/news-articles/a/the-most-powerful-photovoltaic-system-in-the-canton",
   solarmonitor: "https://www.swissolar.ch/02_markt-politik/solarmonitor-schweiz/2025/ssr-solarmonitor-2025-final.pdf",
 };
 
@@ -723,7 +728,10 @@ export default function SolarRechnerRisch() {
     const last = history[history.length - 1];
     const vollJahr = last.jahr - 1;
     const k1 = liveKwp?.get(vollJahr), k0 = liveKwp?.get(vollJahr - 3);
-    const zubauKWp = k1 && k0 && k1 > k0 ? (k1 - k0) / 3 : TREND.zubauKWpProJahr;
+    const zubauRoh = k1 && k0 && k1 > k0 ? (k1 - k0) / 3 : TREND.zubauKWpProJahr;
+    const { einmalig } = TREND;
+    const ohneEinmalig = einmalig.jahr > vollJahr - 3 && einmalig.jahr <= vollJahr;
+    const zubauKWp = ohneEinmalig ? zubauRoh - einmalig.kWp / 3 : zubauRoh;
     const mwhProKWp = live?.solarMwh && live?.installedKwp
       ? live.solarMwh / live.installedKwp
       : TREND.mwhProKWp;
@@ -738,7 +746,7 @@ export default function SolarRechnerRisch() {
     const erreicht = (r) => Math.round(last.jahr + rest / r);
     const zielRate = rest / (TREND.zielJahr - last.jahr);
     return {
-      start: last, vollJahr, zubauKWp, tempo, raten, zielRate,
+      start: last, vollJahr, zubauKWp, zubauRoh, ohneEinmalig, tempo, raten, zielRate,
       faktor: zielRate / tempo,
       jahrMitte: erreicht(raten.mitte),
       jahrFrueh: erreicht(raten.hoch),
@@ -1136,7 +1144,8 @@ export default function SolarRechnerRisch() {
                 <div className="res-big">{f(trend.tempo, 1)} GWh</div>
                 <div className="res-lbl">
                   Zubau pro Jahr bisher (Ø {trend.vollJahr - 2}–{trend.vollJahr},
-                  rund {f(trend.zubauKWp / 1000, 1)} MWp)
+                  rund {f(trend.zubauKWp / 1000, 1)} MWp
+                  {trend.ohneEinmalig ? ", ohne die Grossanlage 2023" : ""})
                 </div>
               </div>
               <div className="res green">
@@ -1441,12 +1450,16 @@ export default function SolarRechnerRisch() {
               Zubau = mittlere Zunahme der installierten Leistung in Risch über die letzten
               drei vollen Jahre ({trend.liveBasis ? "live aus dem Energie Reporter" : "eingebettet: 4'549 kWp Ende 2022 → 12'626 kWp Ende 2025"}),
               umgerechnet mit dem heutigen spezifischen Ertrag und linear fortgeschrieben.
+              Herausgerechnet ist eine einmalige Grossanlage: Fredi Sidler Transport AG,
+              Industriestrasse 21, knapp 1.8 MWp, Netzanschluss geplant 2023 – sie erklärt
+              den grössten Teil des Sprungs 2023 (+3 MWp). Mit ihr läge das Tempo bei
+              rund {f(trend.zubauRoh / 1000, 1)} MWp pro Jahr.
               Spanne aus den drei Swissolar-Szenarien relativ zum Schweizer Zubau
               2023–2025 (Ø ≈ 1.6 GW/Jahr; 2024: 1'799 MW, 2025: 1'333 MW): Bremsszenario
               ≈ 1.2 GW/Jahr (−25 %), Mittelszenario zurück auf ≈ 1.8 GW/Jahr (+13 %).
               Zielpfad: linear bis zum Gemeindeziel «Potenzial {TREND.zielJahr} ausgeschöpft».
-              <span className="subtle">Annahme: Risch folgt dem Schweizer Markt. Ein einzelnes Grossprojekt (z.B. ein Areal oder Gewerbedach) verschiebt die Kurve sichtbar – der Sprung 2023 dürfte so entstanden sein. Lineare Fortschreibung: keine Sättigung, kein Ersatz alter Anlagen, keine Fassaden. Je näher am vollen Potenzial, desto schwieriger werden die restlichen Dächer – das späte Ende der Spanne ist realistischer als das frühe.</span>
-              <Quellen items={[Q_REPORTER, ["Statistik Sonnenenergie 2025 (PDF)", LINKS.statistikSonne], ["Swissolar Solarmonitor 2025 (PDF)", LINKS.solarmonitor], Q_STRATEGIE]} />
+              <span className="subtle">Annahme: Risch folgt dem Schweizer Markt. Einzelne Grossprojekte (Areale, Gewerbedächer) verschieben die Kurve sichtbar; dass die Sidler-Anlage 2023 ans Netz ging, ist aus der Ankündigung abgeleitet, nicht separat bestätigt. Lineare Fortschreibung: keine Sättigung, kein Ersatz alter Anlagen, keine Fassaden. Je näher am vollen Potenzial, desto schwieriger werden die restlichen Dächer – das späte Ende der Spanne ist realistischer als das frühe.</span>
+              <Quellen items={[Q_REPORTER, ["Zug4you: Grossanlage Rotkreuz (2022)", LINKS.sidler], ["Statistik Sonnenenergie 2025 (PDF)", LINKS.statistikSonne], ["Swissolar Solarmonitor 2025 (PDF)", LINKS.solarmonitor], Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>Elektrifizierter Bedarf: ≈ 120 GWh pro Jahr</strong>
