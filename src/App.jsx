@@ -41,9 +41,10 @@ const D = {
   fassadeWinterFaktor: 0.62,   // Dezember: 62 % – tiefe Wintersonne trifft senkrechte Flächen
   ertragKWhProKWp: 950,        // spezifischer Ertrag Mittelland (±10 %)
   heuteAnteilPct: 18,          // genutzter Anteil Dachpotenzial (Energie Reporter, Okt. 2026)
-  stromHeuteGWh: 70,           // Strom inkl. Wärmepumpen, Boiler, E-Autos
+  stromHeuteGWh: 129,          // Energie Reporter, im Netz gemessen (Aug. 2025–Jul. 2026)
+  stromBilanzGWh: 70,          // Gemeindebilanz 2021 (WWZ-Liefermengen + Modell), nur zum Vergleich
   endenergieGWh: 290,          // gesamter Endenergieverbrauch 2021
-  elektrifiziertGWh: 120,      // Modell: alles elektrisch (WP JAZ 3, E-Auto Faktor 3)
+  zusatzElektrifiziertGWh: 50, // 57 GWh fossile Wärme / JAZ 3 ≈ 19 + 96 GWh Treibstoff / 3 ≈ 32
   sommertagKWhProKWp: 5.5,     // Ertrag an einem wolkenlosen Sommertag
   wintertagKWhProKWp: 1.4,     // klarer Wintertag – rund ein Viertel des Sommerwerts
   bedarfFaktorSommer: 0.92,    // Tagesbedarf gegenüber dem Jahresmittel
@@ -574,6 +575,7 @@ export default function SolarRechnerRisch() {
   const [zieljahr, setZieljahr] = useState(2040);
   const [saison, setSaison] = useState("sommer"); // sommer | winter
   const [fassaden, setFassaden] = useState(false);
+  const [aktivTeil, setAktivTeil] = useState(null); // Inhaltsverzeichnis: sichtbarer Teil
 
   // Live-Daten Energie Reporter
   const [status, setStatus] = useState("loading"); // loading | live | fallback
@@ -670,6 +672,7 @@ export default function SolarRechnerRisch() {
           : (D.heuteAnteilPct / 100) * D.potenzialDachGWh;
     const heutePct = Math.max(1, Math.min(100, Math.round((heuteGWh / D.potenzialDachGWh) * 100)));
     const stromGWh = live?.elecMwh ? live.elecMwh / 1000 : D.stromHeuteGWh;
+    const elektrifiziertGWh = stromGWh + D.zusatzElektrifiziertGWh;
     const potMWp = live?.installedKwp && live?.usage
       ? live.installedKwp / 1000 / live.usage
       : (D.potenzialDachGWh * 1000) / D.ertragKWhProKWp;
@@ -681,7 +684,7 @@ export default function SolarRechnerRisch() {
     const wintertagElektrifiziertMWh =
       wintertagStromMWh + D.eAutoTagWinterMWh + D.waermepumpeTagWinterMWh;
     return {
-      heuteGWh, heutePct, stromGWh, potMWp,
+      heuteGWh, heutePct, stromGWh, elektrifiziertGWh, potMWp,
       sommertagStromMWh, sommertagElektrifiziertMWh,
       wintertagStromMWh, wintertagElektrifiziertMWh,
     };
@@ -724,11 +727,36 @@ export default function SolarRechnerRisch() {
       prodGWh, mwp, addMWp, blended, invest, foerder, netto, jahre,
       fassGWh, fassMWp, tagSommerMWh, tagWinterMWh,
       pctStrom: (prodGWh / base.stromGWh) * 100,
-      pctElektrifiziert: (prodGWh / D.elektrifiziertGWh) * 100,
+      pctElektrifiziert: (prodGWh / base.elektrifiziertGWh) * 100,
       deckSommerHeute: (tagSommerMWh / base.sommertagStromMWh) * 100,
       deckWinterHeute: (tagWinterMWh / base.wintertagStromMWh) * 100,
     };
   }, [pct, grossAnteil, preis, eiv, zieljahr, base, fassaden]);
+
+  // Kosten für den vollen Dachausbau – für «Kurz gesagt», unabhängig vom Regler
+  const voll = useMemo(() => {
+    const addMWp = Math.max(0, ((100 - base.heutePct) / 100) * base.potMWp);
+    const p = PRICE[preis];
+    const g = grossAnteil / 100;
+    const invest = addMWp * 1000 * (p.klein * (1 - g) + p.gross * g);
+    const netto = eiv ? invest * (1 - D.eivFoerderung) : invest;
+    return { netto, proKopf: netto / D.einwohner };
+  }, [base, preis, grossAnteil, eiv]);
+
+  useEffect(() => {
+    const ids = ["ist", "soll", "kosten-nutzen", "quellen"];
+    const onScroll = () => {
+      let cur = null;
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top < 140) cur = id;
+      }
+      setAktivTeil(cur);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   let breakEvenPct = 100;
   for (let p = base.heutePct; p <= 100; p++) {
@@ -870,6 +898,33 @@ export default function SolarRechnerRisch() {
           font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:16px; line-height:1.55;
         }
         .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+        html{scroll-behavior:smooth}
+        @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+        section,.part{scroll-margin-top:70px}
+        .kurz{margin-top:22px;max-width:700px;background:var(--card);border:1px solid var(--line);
+          border-left:4px solid var(--amber);border-radius:0 14px 14px 0;padding:16px 20px}
+        .kurz-kicker{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;
+          text-transform:uppercase;color:var(--amber-deep);font-weight:600;margin-bottom:6px}
+        .kurz p{font-size:17px;line-height:1.6}
+        .kurz a{color:inherit;text-decoration:none;border-bottom:2px solid rgba(240,164,0,.55)}
+        .kurz a:hover{border-bottom-color:var(--amber-deep)}
+        .toc{position:sticky;top:0;z-index:20;display:flex;gap:4px;overflow-x:auto;
+          margin:26px -20px 0;padding:10px 20px;background:rgba(237,243,246,.92);
+          backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+          scrollbar-width:none}
+        .toc::-webkit-scrollbar{display:none}
+        .toc a{flex:none;color:var(--ink-soft);text-decoration:none;font-size:14px;font-weight:600;
+          padding:6px 12px;border-radius:99px;white-space:nowrap;transition:background .2s ease}
+        .toc a:hover{color:var(--ink);background:#E1EAEF}
+        .toc a.on{background:var(--ink);color:#F4EFE2}
+        .toc-n{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-right:6px;opacity:.7}
+        .part{margin-top:56px;padding-top:22px;border-top:2px solid var(--ink);display:flex;
+          flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+        .part-num{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;
+          text-transform:uppercase;color:var(--amber-deep);font-weight:600}
+        .part-title{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:18px}
+        .part-lead{color:var(--ink-soft);font-size:14.5px;flex-basis:100%}
+        .part + section{padding-top:22px}
         .mono{font-family:'IBM Plex Mono',monospace}
         h1,h2{font-family:'Archivo',sans-serif;font-stretch:125%;line-height:1.05;letter-spacing:-.01em}
         h1{font-size:clamp(34px,6vw,58px);font-weight:800}
@@ -1049,6 +1104,24 @@ export default function SolarRechnerRisch() {
             was unsere Dächer heute leisten, was möglich wäre – und was uns das kosten würde.
             Alle Werte sind sorgfältige Näherungen; die Annahmen finden Sie ganz unten.
           </p>
+          <div className="kurz">
+            <div className="kurz-kicker">Kurz gesagt</div>
+            <p>
+              Die Dächer in Risch könnten <a href="#ausbau"><strong>{f(D.potenzialDachGWh, 1)} GWh</strong> Solarstrom
+              pro Jahr</a> liefern – rund {f((D.potenzialDachGWh / base.stromGWh) * 100, 0)} % des
+              heutigen Stromverbrauchs. Heute nutzen wir <a href="#trend"><strong>{base.heutePct} %</strong> davon</a>.
+              {trend.faktor > 1.05 ? (
+                <> Im bisherigen Tempo wäre das Potenzial erst <a href="#trend"><strong>um {trend.jahrMitte}</strong></a> ausgeschöpft
+                – für das Gemeindeziel {TREND.zielJahr} müssten wir <strong>{f(trend.faktor, 1)}-mal schneller</strong> bauen.</>
+              ) : (
+                <> Hält das bisherige Tempo, ist das Gemeindeziel <a href="#trend"><strong>{TREND.zielJahr}</strong></a> knapp
+                erreichbar – nachlassen dürfen wir nicht.</>
+              )}
+              {" "}Der volle Ausbau kostet netto rund <a href="#kosten"><strong>CHF {f(voll.netto / 1e6, 0)} Mio</strong></a>
+              {" "}(≈ CHF {f(Math.round(voll.proKopf / 100) * 100)} pro Kopf) – getragen von vielen
+              Eigentümerschaften, nicht von der Gemeindekasse.
+            </p>
+          </div>
           <div className="nutzen" aria-label="Worum es geht">
             <span className="nutzen-chip">Gute Luft für uns.</span>
             <span className="nutzen-chip">Jobs für uns.</span>
@@ -1064,104 +1137,93 @@ export default function SolarRechnerRisch() {
               value={`≈ ${f(base.heuteGWh, 1)}`} unit="GWh/Jahr"
               label={<>heute produziert – rund {base.heutePct} % des Potenzials{live?.installedKwp ? ` (${f(live.installedKwp / 1000, 1)} MWp installiert)` : ""} · <a href={LINKS.energieReporter} target="_blank" rel="noreferrer">Quelle: Energie Reporter</a></>}
             />
-            <Stat value={f(base.stromGWh, 0)} unit="GWh/Jahr" label="Stromverbrauch der ganzen Gemeinde" />
+            <Stat value={f(base.stromGWh, 0)} unit="GWh/Jahr" label="Stromverbrauch der ganzen Gemeinde, im Netz gemessen – inkl. Industrie und Gewerbe" />
           </div>
         </header>
 
-        {/* ---------- MASTER-SLIDER ---------- */}
-        <section>
-          <h2>Belegen Sie die Dächer mit Photovoltaik</h2>
-          <p className="subtle" style={{ maxWidth: 620 }}>
-            Der Regler steuert, wie viel des Dachpotenzials belegt ist. Er beginnt beim
-            heutigen Stand und wirkt auf alle Rechnungen dieser Seite – auch auf den
-            Kostenrechner weiter unten. Auf Wunsch kommen die Fassaden dazu.
-          </p>
-          <div className="card" style={{ marginTop: 20 }}>
-            <Skyline pct={pct} />
-            <div className="seg" role="group" aria-label="Flächen wählen">
-              <button
-                type="button" className={!fassaden ? "on" : ""} aria-pressed={!fassaden}
-                onClick={() => setFassaden(false)}
-              >Nur Dächer</button>
-              <button
-                type="button" className={fassaden ? "on" : ""} aria-pressed={fassaden}
-                onClick={() => setFassaden(true)}
-              >Dächer + Fassaden</button>
-            </div>
-            <div className="slider-head">
-              <span style={{ fontWeight: 600 }}>
-                {fassaden ? "Ausbaugrad von Dächern und Fassaden" : "Ausbaugrad des Dachpotenzials"}
-              </span>
-              <span className="slider-val">{pct} %</span>
-            </div>
-            <input
-              type="range" min={base.heutePct} max={100} step={1} value={pct}
-              onChange={(e) => setPct(Number(e.target.value))}
-              aria-label={fassaden ? "Ausbaugrad von Dächern und Fassaden in Prozent" : "Ausbaugrad des Dachpotenzials in Prozent"}
-            />
-            <div className="slider-scale">
-              <span>{base.heutePct} % · heute</span>
-              <span>100 % · volles Potenzial</span>
-            </div>
+        <nav className="toc" aria-label="Inhalt">
+          {[
+            ["ist", "1", "Wo stehen wir?"],
+            ["soll", "2", "Was ist möglich?"],
+            ["kosten-nutzen", "3", "Kosten & Nutzen"],
+            ["quellen", "", "Quellen"],
+          ].map(([id, n, label]) => (
+            <a key={id} href={`#${id}`} className={aktivTeil === id ? "on" : ""}
+              aria-current={aktivTeil === id ? "true" : undefined}>
+              {n && <span className="toc-n">{n}</span>}{label}
+            </a>
+          ))}
+        </nav>
 
-            <div className="resgrid">
-              <div className="res">
-                <div className="res-big">{f(c.prodGWh, 1)} GWh</div>
-                <div className="res-lbl">
-                  Solarstrom pro Jahr ({f(c.mwp, 0)} MWp installiert
-                  {c.fassGWh > 0 ? `, davon ${f(c.fassGWh, 1)} GWh von Fassaden` : ""})
-                </div>
-              </div>
-              <div className="res blue">
-                <div className="res-big">{f(c.pctStrom, 0)} %</div>
-                <div className="res-lbl">des heutigen Stromverbrauchs ({f(base.stromGWh, 0)} GWh)</div>
-              </div>
-              <div className="res green">
-                <div className="res-big">{f(c.pctElektrifiziert, 0)} %</div>
-                <div className="res-lbl">des Bedarfs, wenn Heizen &amp; Autofahren elektrisch sind (~120 GWh)</div>
-              </div>
-            </div>
-            <p className="subtle" style={{ marginTop: 16 }}>
-              {fassaden
-                ? `Mit Fassaden steigt das Potenzial auf ${f(D.potenzialFassadeGWh, 1)} GWh pro Jahr – mehr als der heutige Stromverbrauch der ganzen Gemeinde. Fassaden liefern pro kWp rund ein Drittel weniger als Dächer, dafür im Winter verhältnismässig viel: Im Dezember bringen sie 62 % zusätzlich zur Dachproduktion, im Juni nur 28 %. Sie wachsen hier im Gleichschritt mit den Dächern – heute sind sie praktisch ungenutzt.`
-                : `Werden zusätzlich geeignete Fassaden genutzt, steigt das Potenzial auf ${f(D.potenzialFassadeGWh, 1)} GWh pro Jahr – mehr als der heutige Stromverbrauch der ganzen Gemeinde. Schalten Sie oben «Dächer + Fassaden» ein.`}
-            </p>
-          </div>
-        </section>
+        <div className="part" id="ist">
+          <span className="part-num">Teil 1</span>
+          <span className="part-title">Wo stehen wir?</span>
+          <span className="part-lead">Verbrauch, Ausbau bisher und Vergleich mit den Nachbarn</span>
+        </div>
 
-        {/* ---------- SONNIGER TAG ---------- */}
-        <section>
-          <h2>Ein schöner Tag – Sommer oder Winter?</h2>
+        {/* ---------- VERBRAUCH ---------- */}
+        <section id="verbrauch">
+          <h2>Wo unsere Energie heute hingeht</h2>
           <p className="subtle" style={{ maxWidth: 640 }}>
-            Die Kernfrage: Könnten wir uns an einem wolkenlosen Tag selbst versorgen?
-            Die Balken zeigen die Tagesbilanz beim oben gewählten Ausbaugrad von {pct} %.
-            Beide Ansichten nutzen dieselbe Skala – schalten Sie um.
+            Endenergieverbrauch der Gemeinde Risch nach Verbrauchergruppen
+            (Energie- und Klimabilanz 2021). Grün = erneuerbarer Anteil.
+            Insgesamt sind heute rund {ernPct} % erneuerbar. «Strom» folgt hier der
+            Abgrenzung der Gemeindebilanz (ohne Wärme- und Mobilitätsstrom, Grossverbraucher
+            nur teilweise) – im Netz gemessen sind es heute rund {f(base.stromGWh, 0)} GWh.
           </p>
-          <div className="seg" role="group" aria-label="Jahreszeit wählen">
-            <button
-              type="button" className={sommer ? "on" : ""} aria-pressed={sommer}
-              onClick={() => setSaison("sommer")}
-            >Sommertag</button>
-            <button
-              type="button" className={!sommer ? "on" : ""} aria-pressed={!sommer}
-              onClick={() => setSaison("winter")}
-            >Wintertag</button>
+          <div className="vgrid">
+            {VERBRAUCH.map((v) => {
+              const ep = (v.erneuerbar / v.total) * 100;
+              return (
+                <div className="vrow" key={v.name}>
+                  <div className="vrow-head">
+                    <span className="vrow-name">{v.name}</span>
+                    <span className="vrow-total">{f(v.total)} GWh · {f(ep, 0)} % erneuerbar</span>
+                  </div>
+                  <div className="subtle">{v.detail}</div>
+                  <div className="vtrack" role="img"
+                    aria-label={`${v.name}: ${f(ep, 0)} Prozent erneuerbar`}>
+                    <div className="vseg-ern" style={{ width: `${ep}%` }} />
+                    <div className="vseg-fos" style={{ width: `${100 - ep}%` }} />
+                  </div>
+                  <div className="subtle">{v.hinweis}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="vlegend" style={{ marginTop: 14 }}>
+            <span><span className="dot" style={{ background: "var(--green)" }} />erneuerbar</span>
+            <span><span className="dot" style={{ background: "var(--clay)" }} />fossil / nicht erneuerbar</span>
+          </div>
+          <div className="card" style={{ marginTop: 22 }}>
+            <strong>Einordnung Solarstrom:</strong>{" "}
+            Die heutige Produktion (≈ {f(base.heuteGWh, 1)} GWh) deckt rund{" "}
+            {f((base.heuteGWh / base.stromGWh) * 100, 0)} % des Stromverbrauchs und{" "}
+            {f((base.heuteGWh / D.endenergieGWh) * 100, 1)} % des gesamten Energieverbrauchs.
+            Das volle Dachpotenzial entspräche {f((D.potenzialDachGWh / base.stromGWh) * 100, 0)} %
+            des heutigen Stromverbrauchs – und rund{" "}
+            {f((D.potenzialDachGWh / base.elektrifiziertGWh) * 100, 0)} % des Bedarfs einer
+            vollständig elektrifizierten Gemeinde.
           </div>
           <div className="card" style={{ marginTop: 16 }}>
-            <Bar label={tag.prodLabel} mwh={tag.prod} max={tagMax} tone="amber" note={tag.prodNote} />
-            <Bar label={tag.bedarfLabel} mwh={tag.bedarf} max={tagMax} tone="blue" note={tag.bedarfNote} />
-            <Bar label={tag.plusLabel} mwh={tag.plus} max={tagMax} tone="slate" note={tag.plusNote} />
-            <div className="fazit">{tagFazit}</div>
-            <p className="subtle" style={{ marginTop: 14 }}>
-              Wichtig: Die Sonne liefert mittags mehr, als gleichzeitig verbraucht wird.
-              Für eine echte Tages-Selbstversorgung braucht es Speicher und das Netz –
-              im Winter zusätzlich andere Quellen wie Wasserkraft, Wind oder Holz.
+            <strong>Wieviel Strom braucht die Energiewende in Risch?</strong>
+            <p className="subtle" style={{ marginTop: 6 }}>
+              Werden Heizen und Autofahren elektrisch, steigt der Strombedarf – unsere
+              Dächer könnten rund {f((D.potenzialDachGWh / base.elektrifiziertGWh) * 100, 0)} %
+              davon liefern, mit Fassaden rund{" "}
+              {f((D.potenzialFassadeGWh / base.elektrifiziertGWh) * 100, 0)} %.
             </p>
+            <Bar label="Stromverbrauch heute" mwh={base.stromGWh} max={base.elektrifiziertGWh * 1.1} tone="blue" unit="GWh"
+              note={`Haushalte, Gewerbe, Industrie – im Netz gemessen. Die Gemeindebilanz 2021 rechnet mit ≈ ${D.stromBilanzGWh} GWh (ohne Teile der Grossverbraucher)`} />
+            <Bar label="Strombedarf bei vollzogener Energiewende" mwh={base.elektrifiziertGWh} max={base.elektrifiziertGWh * 1.1} tone="slate" unit="GWh"
+              note="Modell: fossile Heizungen durch Wärmepumpen ersetzt, Strassenverkehr elektrisch (±20 GWh)" />
+            <Bar label="Solarstrom-Potenzial unserer Dächer" mwh={D.potenzialDachGWh} max={base.elektrifiziertGWh * 1.1} tone="amber" unit="GWh"
+              note="Dazu kämen Fassaden (bis 88.8 GWh total), Wasserkraft und Importe für den Rest" />
           </div>
         </section>
 
         {/* ---------- HISTORIE ---------- */}
-        <section>
+        <section id="trend">
           <h2>Schritt für Schritt zu mehr Strom</h2>
           <p className="subtle" style={{ maxWidth: 640 }}>
             Solarstromproduktion in der Gemeinde Risch pro Jahr – und wie es weitergeht,
@@ -1209,7 +1271,7 @@ export default function SolarRechnerRisch() {
         </section>
 
         {/* ---------- GEMEINDEVERGLEICH ---------- */}
-        <section>
+        <section id="vergleich">
           <h2>Wie stehen wir im Vergleich da?</h2>
           <p className="subtle" style={{ maxWidth: 640 }}>
             Die drei Kernindikatoren des Energie Reporters für Risch, die Nachbargemeinden
@@ -1253,110 +1315,112 @@ export default function SolarRechnerRisch() {
           </div>
         </section>
 
-        {/* ---------- VERBRAUCH ---------- */}
-        <section>
-          <h2>Wo unsere Energie heute hingeht</h2>
-          <p className="subtle" style={{ maxWidth: 640 }}>
-            Endenergieverbrauch der Gemeinde Risch nach Verbrauchergruppen
-            (Energie- und Klimabilanz 2021). Grün = erneuerbarer Anteil.
-            Insgesamt sind heute rund {ernPct} % erneuerbar.
-          </p>
-          <div className="vgrid">
-            {VERBRAUCH.map((v) => {
-              const ep = (v.erneuerbar / v.total) * 100;
-              return (
-                <div className="vrow" key={v.name}>
-                  <div className="vrow-head">
-                    <span className="vrow-name">{v.name}</span>
-                    <span className="vrow-total">{f(v.total)} GWh · {f(ep, 0)} % erneuerbar</span>
-                  </div>
-                  <div className="subtle">{v.detail}</div>
-                  <div className="vtrack" role="img"
-                    aria-label={`${v.name}: ${f(ep, 0)} Prozent erneuerbar`}>
-                    <div className="vseg-ern" style={{ width: `${ep}%` }} />
-                    <div className="vseg-fos" style={{ width: `${100 - ep}%` }} />
-                  </div>
-                  <div className="subtle">{v.hinweis}</div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="vlegend" style={{ marginTop: 14 }}>
-            <span><span className="dot" style={{ background: "var(--green)" }} />erneuerbar</span>
-            <span><span className="dot" style={{ background: "var(--clay)" }} />fossil / nicht erneuerbar</span>
-          </div>
-          <div className="card" style={{ marginTop: 22 }}>
-            <strong>Einordnung Solarstrom:</strong>{" "}
-            Die heutige Produktion (≈ {f(base.heuteGWh, 1)} GWh) deckt rund{" "}
-            {f((base.heuteGWh / base.stromGWh) * 100, 0)} % des Stromverbrauchs und{" "}
-            {f((base.heuteGWh / D.endenergieGWh) * 100, 1)} % des gesamten Energieverbrauchs.
-            Das volle Dachpotenzial entspräche {f((D.potenzialDachGWh / base.stromGWh) * 100, 0)} %
-            des heutigen Stromverbrauchs – und über der Hälfte des Bedarfs einer
-            vollständig elektrifizierten Gemeinde.
-          </div>
-          <div className="card" style={{ marginTop: 16 }}>
-            <strong>Wieviel Strom braucht die Energiewende in Risch?</strong>
-            <p className="subtle" style={{ marginTop: 6 }}>
-              Werden Heizen und Autofahren elektrisch, steigt der Strombedarf –
-              unsere Dächer könnten mehr als die Hälfte davon liefern.
-            </p>
-            <Bar label="Stromverbrauch heute" mwh={base.stromGWh} max={140} tone="blue" unit="GWh"
-              note="Haushalte, Gewerbe, Industrie – gemessener Jahresverbrauch" />
-            <Bar label="Strombedarf bei vollzogener Energiewende" mwh={D.elektrifiziertGWh} max={140} tone="slate" unit="GWh"
-              note="Modell: fossile Heizungen durch Wärmepumpen ersetzt, Strassenverkehr elektrisch (±20 GWh)" />
-            <Bar label="Solarstrom-Potenzial unserer Dächer" mwh={D.potenzialDachGWh} max={140} tone="amber" unit="GWh"
-              note="Dazu kämen Fassaden (bis 88.8 GWh total), Wasserkraft und Importe für den Rest" />
-          </div>
-        </section>
+        <div className="part" id="soll">
+          <span className="part-num">Teil 2</span>
+          <span className="part-title">Was ist möglich?</span>
+          <span className="part-lead">Spielen Sie den Ausbau durch – mit allen Grenzen</span>
+        </div>
 
-        {/* ---------- FRANKEN & CO2 ---------- */}
-        <section>
-          <h2>Geld, das im Dorf bleibt – und CO2, das wegfällt</h2>
-          <p className="subtle" style={{ maxWidth: 640 }}>
-            Für Heizöl, Erdgas, Benzin und Diesel fliessen aus Risch jedes Jahr rund
-            CHF {GELD.fossilAbflussMio} Millionen ab (Spanne 20–30, je nach Preisen).
-            Sonne vom eigenen Dach ersetzt Importe durch lokale Wertschöpfung –
-            Aufträge für Installateure, tiefere Stromrechnungen, Wert fürs Gebäude.
+        {/* ---------- MASTER-SLIDER ---------- */}
+        <section id="ausbau">
+          <h2>Belegen Sie die Dächer mit Photovoltaik</h2>
+          <p className="subtle" style={{ maxWidth: 620 }}>
+            Der Regler steuert, wie viel des Dachpotenzials belegt ist. Er beginnt beim
+            heutigen Stand und wirkt auf alle folgenden Rechnungen – auch auf den
+            Kostenrechner weiter unten. Auf Wunsch kommen die Fassaden dazu.
           </p>
           <div className="card" style={{ marginTop: 20 }}>
-            <div className="resgrid">
-              <div className="res">
-                <div className="res-big">CHF {f(geld.stromwertMio, 1)} Mio</div>
-                <div className="res-lbl">Stromwert pro Jahr von unseren Dächern beim gewählten Ausbau ({pct} %)</div>
-              </div>
-              <div className="res blue">
-                <div className="res-big">{f(geld.abflussJahre, 1)} Jahre</div>
-                <div className="res-lbl">fossiler Energieausgaben entsprechen der gesamten Ausbau-Investition</div>
-              </div>
-              <div className="res green">
-                <div className="res-big">CHF {f(GELD.fossilAbflussMio * 25)} Mio</div>
-                <div className="res-lbl">verlassen Risch in den nächsten 25 Jahren, wenn alles bleibt wie heute</div>
-              </div>
+            <Skyline pct={pct} />
+            <div className="seg" role="group" aria-label="Flächen wählen">
+              <button
+                type="button" className={!fassaden ? "on" : ""} aria-pressed={!fassaden}
+                onClick={() => setFassaden(false)}
+              >Nur Dächer</button>
+              <button
+                type="button" className={fassaden ? "on" : ""} aria-pressed={fassaden}
+                onClick={() => setFassaden(true)}
+              >Dächer + Fassaden</button>
+            </div>
+            <div className="slider-head">
+              <span style={{ fontWeight: 600 }}>
+                {fassaden ? "Ausbaugrad von Dächern und Fassaden" : "Ausbaugrad des Dachpotenzials"}
+              </span>
+              <span className="slider-val">{pct} %</span>
+            </div>
+            <input
+              type="range" min={base.heutePct} max={100} step={1} value={pct}
+              onChange={(e) => setPct(Number(e.target.value))}
+              aria-label={fassaden ? "Ausbaugrad von Dächern und Fassaden in Prozent" : "Ausbaugrad des Dachpotenzials in Prozent"}
+            />
+            <div className="slider-scale">
+              <span>{base.heutePct} % · heute</span>
+              <span>100 % · volles Potenzial</span>
             </div>
 
-            <div className="dbar-head" style={{ marginTop: 28 }}>
-              <span>CO2-Tacho der Gemeinde</span>
-              <span className="mono">{f(CO2.totalT - geld.co2T)} von {f(CO2.totalT)} t/Jahr</span>
+            <div className="resgrid">
+              <div className="res">
+                <div className="res-big">{f(c.prodGWh, 1)} GWh</div>
+                <div className="res-lbl">
+                  Solarstrom pro Jahr ({f(c.mwp, 0)} MWp installiert
+                  {c.fassGWh > 0 ? `, davon ${f(c.fassGWh, 1)} GWh von Fassaden` : ""})
+                </div>
+              </div>
+              <div className="res blue">
+                <div className="res-big">{f(c.pctStrom, 0)} %</div>
+                <div className="res-lbl">des heutigen Stromverbrauchs ({f(base.stromGWh, 0)} GWh)</div>
+              </div>
+              <div className="res green">
+                <div className="res-big">{f(c.pctElektrifiziert, 0)} %</div>
+                <div className="res-lbl">des Bedarfs, wenn Heizen &amp; Autofahren elektrisch sind (~{f(base.elektrifiziertGWh, 0)} GWh)</div>
+              </div>
             </div>
-            <div className="tacho" role="img"
-              aria-label={`CO2: ${f(geld.co2T)} von ${f(CO2.totalT)} Tonnen eingespart`}>
-              <div className="tacho-rest" style={{ width: `${((CO2.totalT - geld.co2T) / CO2.totalT) * 100}%` }} />
-              <div className="tacho-saved" style={{ width: `${(geld.co2T / CO2.totalT) * 100}%` }} />
-            </div>
-            <div className="dbar-note">
-              Grün = Einsparung, wenn der zusätzliche Solarstrom via Wärmepumpen und
-              E-Autos Heizöl, Gas und Treibstoff ersetzt (Modell: ~{CO2.tProGWh} t pro GWh).
-            </div>
-            <div className="chips">
-              <span className="chip">✈ {f(geld.co2T / CO2.flugT)} Retourflüge Zürich–New York</span>
-              <span className="chip">🚗 {f(geld.co2T / CO2.autoT)} Autos ein Jahr stillgelegt</span>
-              <span className="chip">🌍 {f(geld.co2T / CO2.erdrundeT)} Erdumrundungen im Benziner</span>
-            </div>
+            <p className="subtle" style={{ marginTop: 16 }}>
+              {fassaden
+                ? `Mit Fassaden steigt das Potenzial auf ${f(D.potenzialFassadeGWh, 1)} GWh pro Jahr – ${D.potenzialFassadeGWh > base.stromGWh ? "mehr als der heutige Stromverbrauch der ganzen Gemeinde" : `rund ${f((D.potenzialFassadeGWh / base.stromGWh) * 100, 0)} % des heutigen Stromverbrauchs der ganzen Gemeinde`}. Fassaden liefern pro kWp rund ein Drittel weniger als Dächer, dafür im Winter verhältnismässig viel: Im Dezember bringen sie 62 % zusätzlich zur Dachproduktion, im Juni nur 28 %. Sie wachsen hier im Gleichschritt mit den Dächern – heute sind sie praktisch ungenutzt.`
+                : `Werden zusätzlich geeignete Fassaden genutzt, steigt das Potenzial auf ${f(D.potenzialFassadeGWh, 1)} GWh pro Jahr – ${D.potenzialFassadeGWh > base.stromGWh ? "mehr als der heutige Stromverbrauch der ganzen Gemeinde" : `rund ${f((D.potenzialFassadeGWh / base.stromGWh) * 100, 0)} % des heutigen Stromverbrauchs der ganzen Gemeinde`}. Schalten Sie oben «Dächer + Fassaden» ein.`}
+            </p>
           </div>
         </section>
 
+        {/* ---------- SONNIGER TAG ---------- */}
+        <section id="tag">
+          <h2>Ein schöner Tag – Sommer oder Winter?</h2>
+          <p className="subtle" style={{ maxWidth: 640 }}>
+            Die Kernfrage: Könnten wir uns an einem wolkenlosen Tag selbst versorgen?
+            Die Balken zeigen die Tagesbilanz beim oben gewählten Ausbaugrad von {pct} %.
+            Beide Ansichten nutzen dieselbe Skala – schalten Sie um.
+          </p>
+          <div className="seg" role="group" aria-label="Jahreszeit wählen">
+            <button
+              type="button" className={sommer ? "on" : ""} aria-pressed={sommer}
+              onClick={() => setSaison("sommer")}
+            >Sommertag</button>
+            <button
+              type="button" className={!sommer ? "on" : ""} aria-pressed={!sommer}
+              onClick={() => setSaison("winter")}
+            >Wintertag</button>
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <Bar label={tag.prodLabel} mwh={tag.prod} max={tagMax} tone="amber" note={tag.prodNote} />
+            <Bar label={tag.bedarfLabel} mwh={tag.bedarf} max={tagMax} tone="blue" note={tag.bedarfNote} />
+            <Bar label={tag.plusLabel} mwh={tag.plus} max={tagMax} tone="slate" note={tag.plusNote} />
+            <div className="fazit">{tagFazit}</div>
+            <p className="subtle" style={{ marginTop: 14 }}>
+              Wichtig: Die Sonne liefert mittags mehr, als gleichzeitig verbraucht wird.
+              Für eine echte Tages-Selbstversorgung braucht es Speicher und das Netz –
+              im Winter zusätzlich andere Quellen wie Wasserkraft, Wind oder Holz.
+            </p>
+          </div>
+        </section>
+
+        <div className="part" id="kosten-nutzen">
+          <span className="part-num">Teil 3</span>
+          <span className="part-title">Was kostet es, was bringt es?</span>
+          <span className="part-lead">Investition, Franken im Dorf und CO2</span>
+        </div>
+
         {/* ---------- KOSTENRECHNER ---------- */}
-        <section>
+        <section id="kosten">
           <h2>Was würde der Ausbau kosten?</h2>
           <p className="subtle" style={{ maxWidth: 640 }}>
             Investition, um vom heutigen Stand ({base.heutePct} %) auf den oben gewählten
@@ -1432,8 +1496,54 @@ export default function SolarRechnerRisch() {
           </div>
         </section>
 
+        {/* ---------- FRANKEN & CO2 ---------- */}
+        <section id="nutzen">
+          <h2>Geld, das im Dorf bleibt – und CO2, das wegfällt</h2>
+          <p className="subtle" style={{ maxWidth: 640 }}>
+            Für Heizöl, Erdgas, Benzin und Diesel fliessen aus Risch jedes Jahr rund
+            CHF {GELD.fossilAbflussMio} Millionen ab (Spanne 20–30, je nach Preisen).
+            Sonne vom eigenen Dach ersetzt Importe durch lokale Wertschöpfung –
+            Aufträge für Installateure, tiefere Stromrechnungen, Wert fürs Gebäude.
+          </p>
+          <div className="card" style={{ marginTop: 20 }}>
+            <div className="resgrid">
+              <div className="res">
+                <div className="res-big">CHF {f(geld.stromwertMio, 1)} Mio</div>
+                <div className="res-lbl">Stromwert pro Jahr von unseren Dächern beim gewählten Ausbau ({pct} %)</div>
+              </div>
+              <div className="res blue">
+                <div className="res-big">{f(geld.abflussJahre, 1)} Jahre</div>
+                <div className="res-lbl">fossiler Energieausgaben entsprechen der gesamten Ausbau-Investition</div>
+              </div>
+              <div className="res green">
+                <div className="res-big">CHF {f(GELD.fossilAbflussMio * 25)} Mio</div>
+                <div className="res-lbl">verlassen Risch in den nächsten 25 Jahren, wenn alles bleibt wie heute</div>
+              </div>
+            </div>
+
+            <div className="dbar-head" style={{ marginTop: 28 }}>
+              <span>CO2-Tacho der Gemeinde</span>
+              <span className="mono">{f(CO2.totalT - geld.co2T)} von {f(CO2.totalT)} t/Jahr</span>
+            </div>
+            <div className="tacho" role="img"
+              aria-label={`CO2: ${f(geld.co2T)} von ${f(CO2.totalT)} Tonnen eingespart`}>
+              <div className="tacho-rest" style={{ width: `${((CO2.totalT - geld.co2T) / CO2.totalT) * 100}%` }} />
+              <div className="tacho-saved" style={{ width: `${(geld.co2T / CO2.totalT) * 100}%` }} />
+            </div>
+            <div className="dbar-note">
+              Grün = Einsparung, wenn der zusätzliche Solarstrom via Wärmepumpen und
+              E-Autos Heizöl, Gas und Treibstoff ersetzt (Modell: ~{CO2.tProGWh} t pro GWh).
+            </div>
+            <div className="chips">
+              <span className="chip">✈ {f(geld.co2T / CO2.flugT)} Retourflüge Zürich–New York</span>
+              <span className="chip">🚗 {f(geld.co2T / CO2.autoT)} Autos ein Jahr stillgelegt</span>
+              <span className="chip">🌍 {f(geld.co2T / CO2.erdrundeT)} Erdumrundungen im Benziner</span>
+            </div>
+          </div>
+        </section>
+
         {/* ---------- DATEN & FEHLERQUELLEN ---------- */}
-        <section>
+        <section id="quellen">
           <h2>Daten, Annahmen &amp; Fehlerquellen</h2>
           <p className="subtle" style={{ maxWidth: 660 }}>
             Dieser Rechner arbeitet bewusst mit transparenten Näherungen. Wer die Zahlen
@@ -1480,10 +1590,23 @@ export default function SolarRechnerRisch() {
               <strong>Verbrauch: 290 GWh gesamt · 130 Mobilität · 118 Wärme · 42 Strom</strong>
               Energie- und Klimabilanz der Gemeinde Risch, Bilanzjahr 2021 (OekoWatt AG), enthalten
               in der Energie- und Klimastrategie 2025.
-              Stromverbrauch inkl. Wärmepumpen, Boiler und E-Autos: ≈ 70 GWh; mit
-              Live-Verbindung wird der gemessene Wert des Energie Reporters verwendet.
+              Für Strom rechnet die Seite aber mit dem im Netz gemessenen Verbrauch (siehe
+              nächster Eintrag).
               <span className="subtle">Bevölkerung und Verbrauch sind seit 2021 gewachsen (+5–10 %). Mobilität enthält auch Flugreisen und Bahn; erneuerbare Anteile pro Gruppe sind teilweise modelliert.</span>
               <Quellen items={[Q_STRATEGIE]} />
+            </div>
+            <div className="src-item">
+              <strong>Stromverbrauch: ≈ {f(base.stromGWh, 0)} GWh (gemessen) statt ≈ {D.stromBilanzGWh} GWh (Gemeindebilanz)</strong>
+              Der Energie Reporter weist den Stromverbrauch aus Netzdaten für das ganze
+              Gemeindegebiet aus – inklusive Grossverbraucher aus Industrie und Gewerbe,
+              Wärmepumpen und E-Autos (2023: 108 GWh, 2024: 113, 2025: 107, Aug. 2025–Jul. 2026:
+              129). Die Gemeindebilanz 2021 kommt auf rund 70 GWh (42 GWh Strom + Wärme- und
+              Mobilitätsstrom); sie stützt sich auf WWZ-Liefermengen (31 GWh Gewerbe, 10 GWh
+              Haushalte) und erfasst Grossverbraucher mit freier Lieferantenwahl vermutlich nicht
+              vollständig. Die Seite verwendet den gemessenen, höheren Wert – das ist die
+              ehrlichere Basis, auch weil Industrie- und Gewerbedächer zum Potenzial zählen.
+              <span className="subtle">Pro Kopf ergibt das rund 10 MWh – deutlich über dem Schweizer Schnitt, ein Hinweis auf grosse Verbraucher. Der Sprung um rund 20 % im letzten Jahr ist nicht erklärt (neuer Grossverbraucher oder Datenumstellung möglich).</span>
+              <Quellen items={[Q_REPORTER, Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>Sommertag: 5.5 kWh pro kWp · Wintertag: 1.4 kWh pro kWp</strong>
@@ -1512,9 +1635,10 @@ export default function SolarRechnerRisch() {
               <Quellen items={[Q_REPORTER, ["Zug4you: Grossanlage Rotkreuz (2022)", LINKS.sidler], ["Statistik Sonnenenergie 2025 (PDF)", LINKS.statistikSonne], ["Swissolar Solarmonitor 2025 (PDF)", LINKS.solarmonitor], Q_STRATEGIE]} />
             </div>
             <div className="src-item">
-              <strong>Elektrifizierter Bedarf: ≈ 120 GWh pro Jahr</strong>
-              Modell: heutiger Strom + fossile Heizungen ersetzt durch Wärmepumpen
-              (Jahresarbeitszahl 3) + Strassenverkehr elektrisch (Effizienzfaktor 3).
+              <strong>Elektrifizierter Bedarf: ≈ {f(base.elektrifiziertGWh, 0)} GWh pro Jahr</strong>
+              Modell: heutiger Stromverbrauch + {D.zusatzElektrifiziertGWh} GWh: fossile
+              Heizungen ersetzt durch Wärmepumpen (57 GWh Wärme, Jahresarbeitszahl 3 ≈ 19 GWh)
+              + Strassenverkehr elektrisch (96 GWh Treibstoff, Effizienzfaktor 3 ≈ 32 GWh).
               <span className="subtle">Unsicherheit ±20 GWh, abhängig von Sanierungen, Fernwärmeausbau und Verkehrsentwicklung.</span>
               <Quellen items={[Q_STRATEGIE]} />
             </div>

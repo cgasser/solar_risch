@@ -27,6 +27,14 @@ public/api/energiereporter.php   Daten-Proxy mit 12h-Cache; wird von Vite 1:1 na
 .github/workflows/deploy.yml     Push auf main → Build → rsync zu Infomaniak
 ```
 
+## Seitenaufbau (Okt. 2026, mit Verein abgestimmt)
+
+Kopf mit «Kurz gesagt» → mitlaufendes Inhaltsverzeichnis (`.toc`, Scroll-Spy
+`aktivTeil`) → **Teil 1 Wo stehen wir?** (Verbrauch, Trend, Vergleich) →
+**Teil 2 Was ist möglich?** (Regler inkl. Fassaden, Sommer-/Wintertag) →
+**Teil 3 Kosten & Nutzen** (Kostenrechner, Geld & CO2) → Quellen.
+Der Regler (`pct`) darf nur Sektionen beeinflussen, die *nach* ihm kommen.
+
 ## Deployment
 
 Push auf `main` deployt automatisch (GitHub Actions → rsync über SSH zu
@@ -68,8 +76,8 @@ fällt auf Direktabruf/Fallback zurück (Badge).
 | Dach-Solarpotenzial | 64.6 GWh/a | BFE Sonnendach.ch, Ausgabe 2025 |
 | inkl. Fassaden | 88.8 GWh/a | BFE Sonnendach.ch, Ausgabe 2025 |
 | Verbrauch total | 290 GWh/a (130 Mobilität / 118 Wärme / 42 Strom) | Energie- und Klimabilanz Gemeinde Risch, Bilanzjahr 2021 (OekoWatt) |
-| Strom inkl. WP/Boiler/E-Autos | ≈ 70 GWh/a | dito, hergeleitet |
-| Elektrifizierter Bedarf | ≈ 120 GWh/a | Modell: WP JAZ 3, E-Auto-Faktor 3 |
+| Stromverbrauch (Basis der Seite) | ≈ 129 GWh/a, im Netz gemessen inkl. Grossverbraucher | Energie Reporter (Aug. 2025–Jul. 2026); Gemeindebilanz 2021 nur ≈ 70 GWh (WWZ-Liefermengen) – als Vergleich gezeigt |
+| Elektrifizierter Bedarf | Stromverbrauch + 50 GWh/a (≈ 179) | Modell: 57 GWh fossile Wärme / JAZ 3 + 96 GWh Treibstoff / 3 |
 | CO2 | 60'500 t/a total, ~40'000 t fossil vermeidbar | Gemeindebilanz 2021 |
 | Fossiler Geldabfluss | ≈ CHF 25 Mio/a (20–30) | Modell aus 57 GWh Wärme + 96 GWh Treibstoff |
 | Zubau-Tempo Risch | ≈ 1.8 GWh/a (2.1 MWp/a, Ø 2023–25 ohne Grossanlage Sidler 1.8 MWp), Spanne −25 %/+13 % | Energie Reporter; Swissolar Solarmonitor 2025 (Szenarien), Statistik Sonnenenergie 2025 |
