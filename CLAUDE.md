@@ -84,7 +84,9 @@ fällt auf Direktabruf/Fallback zurück (Badge).
 3. **Sprache:** Schweizer Hochdeutsch, **ss statt ß**. Zahlen immer über den
    Helfer `f()` formatieren (de-CH, Apostroph-Tausender).
 4. **Lizenz:** CC-BY-Quellennennung (Energie Reporter, geoimpact, EnergieSchweiz)
-   im Footer muss bestehen bleiben.
+   im Footer muss bestehen bleiben. Quellen-URLs zentral in `LINKS` (App.jsx),
+   pro `src-item` als `<Quellen items={…} />`. energiereporter.ch lieferte im
+   Okt. 2026 404 → Verweis auf opendata.swiss; periodisch neu prüfen.
 5. **Design-System:** Farben nur über CSS-Variablen (`--amber`, `--ink`,
    `--green`, `--clay`, …), Fonts Archivo (Titel, font-stretch 125%) +
    IBM Plex Sans/Mono (Zahlen = Mono). Bestehende Bausteine wiederverwenden
