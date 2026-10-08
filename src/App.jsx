@@ -123,6 +123,35 @@ const CO2 = {
   erdrundeT: 6,  // einmal um die Erde im Benziner (40'000 km)
 };
 
+// Quellen-Links (geprüft Okt. 2026). energiereporter.ch leitet derzeit auf eine
+// 404-Seite von EnergieSchweiz um – darum der Datensatz auf opendata.swiss.
+const LINKS = {
+  energieReporter: "https://opendata.swiss/de/dataset/energie-reporter",
+  sonnendachRisch: "https://www.uvek-gis.admin.ch/BFE/storymaps/ECH_SolarpotGemeinden/pdf/1707.pdf",
+  sonnendach: "https://www.sonnendach.ch",
+  strategieRisch: "https://www.zg.ch/behoerden/gemeinden/risch-rotkreuz/projekte-test/energie-und-klimastrategie/unterlagen/energie-und-klimastrategie/download",
+  preisstudie: "https://pubdb.bfe.admin.ch/de/publication/download/12694",
+  swissolarFakten: "https://www.swissolar.ch/02_markt-politik/faktenblatt/de_2025_faktenblatt_pv_schweiz_sws.pdf",
+  pronovo: "https://pronovo.ch",
+};
+
+function Quellen({ items }) {
+  return (
+    <span className="src-links">
+      Quelle{items.length > 1 ? "n" : ""}:{" "}
+      {items.map(([label, href], i) => (
+        <span key={href}>
+          {i > 0 && " · "}
+          <a href={href} target="_blank" rel="noreferrer">{label}</a>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+const Q_STRATEGIE = ["Energie- und Klimastrategie Risch 2025 (PDF)", LINKS.strategieRisch];
+const Q_REPORTER = ["Energie Reporter auf opendata.swiss", LINKS.energieReporter];
+
 const f = (n, d = 0) =>
   n.toLocaleString("de-CH", { maximumFractionDigits: d, minimumFractionDigits: 0 });
 
@@ -795,6 +824,8 @@ export default function SolarRechnerRisch() {
         .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
         .chip{background:#E9F3EC;border:1px solid #CBE2D2;border-radius:99px;padding:7px 13px;font-size:13.5px;font-weight:500}
         .src-item .subtle{display:block}
+        .src-links{display:block;margin-top:6px;font-size:13.5px;color:var(--ink-soft)}
+        .src-links a,footer a{color:var(--amber-deep);font-weight:600;overflow-wrap:anywhere}
 
         footer{padding:40px 0 60px;color:var(--ink-soft);font-size:13.5px;border-top:1px solid var(--line);margin-top:30px}
 
@@ -828,7 +859,7 @@ export default function SolarRechnerRisch() {
             <Stat value="64.6" unit="GWh/Jahr" label="Solarstrom-Potenzial aller geeigneten Dächer in der Gemeinde (BFE, Ausgabe 2025)" />
             <Stat
               value={`≈ ${f(base.heuteGWh, 1)}`} unit="GWh/Jahr"
-              label={<>heute produziert – rund {base.heutePct} % des Potenzials{live?.installedKwp ? ` (${f(live.installedKwp / 1000, 1)} MWp installiert)` : ""} · <a href="https://www.energiereporter.ch" target="_blank" rel="noreferrer">Quelle: Energie Reporter</a></>}
+              label={<>heute produziert – rund {base.heutePct} % des Potenzials{live?.installedKwp ? ` (${f(live.installedKwp / 1000, 1)} MWp installiert)` : ""} · <a href={LINKS.energieReporter} target="_blank" rel="noreferrer">Quelle: Energie Reporter</a></>}
             />
             <Stat value={f(base.stromGWh, 0)} unit="GWh/Jahr" label="Stromverbrauch der ganzen Gemeinde" />
           </div>
@@ -1184,25 +1215,30 @@ export default function SolarRechnerRisch() {
               und übernimmt für Risch (BFS 1707): installierte kWp, Solarproduktion,
               Potenzial-Ausnutzung und den gemessenen Stromverbrauch.
               <span className="subtle">Schlägt die Abfrage fehl (Vorschau-Sandbox oder CORS-Sperre des Browsers), rechnet die Seite mit eingebetteten Werten weiter – der Status wird oben angezeigt. Für die Vereins-Website bei Bedarf einen kleinen Daten-Proxy (z.B. Cloudflare Worker) vorschalten; die URLs sind im Quellcode zuoberst konfigurierbar. Bei Veröffentlichung müssen Energie Reporter als Quelle sowie geoimpact und EnergieSchweiz genannt und verlinkt werden – der Footer erfüllt das bereits.</span>
+              <Quellen items={[Q_REPORTER]} />
             </div>
             <div className="src-item">
               <strong>Potenzial: 64.6 GWh (Dächer) / 88.8 GWh (inkl. Fassaden)</strong>
               BFE Sonnendach.ch, Gemeinde Risch (BFS-Nr. 1707), Ausgabe 2025. Technisches
               Potenzial: nur gut geeignete Flächen, 70 % Belegung, Modulwirkungsgrad 20 %.
               <span className="subtle">Unsicherheit ±10–15 %. Bereits gebaute Anlagen sind im Potenzial enthalten. Denkmalschutz und bauliche Sonderfälle sind nicht abgezogen. Hinweis: Der Energie Reporter nutzt ein eigenes, leicht abweichendes Potenzialmodell – der Ausbaugrad hier wird einheitlich auf die 64.6 GWh des BFE bezogen.</span>
+              <Quellen items={[["BFE-Faktenblatt Solarpotenzial Risch 2025 (PDF)", LINKS.sonnendachRisch], ["sonnendach.ch", LINKS.sonnendach]]} />
             </div>
             <div className="src-item">
               <strong>Heute installiert: ≈ {f(base.heuteGWh, 1)} GWh ({base.heutePct} % des Potenzials)</strong>
               Primär aus dem Energie Reporter; ohne Live-Verbindung aus der Energie- und
               Klimastrategie der Gemeinde Risch (2025: «rund 10 % genutzt»), fortgeschrieben.
               <span className="subtle">Unsicherheit im Fallback ±2 GWh. Die Jahresreihe vor 2021 bleibt eine Rückrechnung anhand des schweizweiten Wachstums – der Energie Reporter historisiert erst seit März 2021.</span>
+              <Quellen items={[Q_REPORTER, Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>Verbrauch: 290 GWh gesamt · 130 Mobilität · 118 Wärme · 42 Strom</strong>
-              Energie- und Klimabilanz der Gemeinde Risch, Bilanzjahr 2021 (OekoWatt AG).
+              Energie- und Klimabilanz der Gemeinde Risch, Bilanzjahr 2021 (OekoWatt AG), enthalten
+              in der Energie- und Klimastrategie 2025.
               Stromverbrauch inkl. Wärmepumpen, Boiler und E-Autos: ≈ 70 GWh; mit
               Live-Verbindung wird der gemessene Wert des Energie Reporters verwendet.
               <span className="subtle">Bevölkerung und Verbrauch sind seit 2021 gewachsen (+5–10 %). Mobilität enthält auch Flugreisen und Bahn; erneuerbare Anteile pro Gruppe sind teilweise modelliert.</span>
+              <Quellen items={[Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>Sommertag: 5.5 kWh pro kWp · Wintertag: 1.4 kWh pro kWp</strong>
@@ -1219,6 +1255,7 @@ export default function SolarRechnerRisch() {
               Modell: heutiger Strom + fossile Heizungen ersetzt durch Wärmepumpen
               (Jahresarbeitszahl 3) + Strassenverkehr elektrisch (Effizienzfaktor 3).
               <span className="subtle">Unsicherheit ±20 GWh, abhängig von Sanierungen, Fernwärmeausbau und Verkehrsentwicklung.</span>
+              <Quellen items={[Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>Gemeindevergleich: Indikatoren des Energie Reporters</strong>
@@ -1226,12 +1263,14 @@ export default function SolarRechnerRisch() {
               derselben Live-Tabelle (alle Schweizer Gemeinden); der CH-Schnitt ist das
               ungewichtete Mittel aller Gemeinden.
               <span className="subtle">Ohne Live-Verbindung zeigt die Seite eingebettete Richtwerte (Stand 2026, ±einige Prozentpunkte) – der Status oben gilt auch hier. Die Solar-Ausnutzung der Nachbarn bezieht sich auf deren eigenes Potenzialmodell.</span>
+              <Quellen items={[Q_REPORTER]} />
             </div>
             <div className="src-item">
               <strong>Geldabfluss: ≈ CHF 25 Mio pro Jahr (Spanne 20–30)</strong>
               Modell: 57 GWh fossile Wärme × ~12 Rp./kWh + 96 GWh Treibstoffe × ~18 Rp./kWh.
               Stromwert der Solarproduktion: {GELD.stromwertRpKWh} Rp./kWh (vermiedener Einkauf).
               <span className="subtle">Preisniveaus 2025/26, stark abhängig von Öl-, Gas- und Treibstoffpreisen. «Im Dorf bleiben» heisst: Ausgaben verschieben sich zu lokaler Produktion, Installation und Unterhalt – ein Teil fliesst weiterhin an Hersteller ab.</span>
+              <Quellen items={[Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>CO2-Modell: ~720 t pro zusätzlicher GWh Solarstrom</strong>
@@ -1239,19 +1278,21 @@ export default function SolarRechnerRisch() {
               ersetzt (1 GWh Strom ≈ 3 GWh fossil). Obergrenze: ~40'000 t – die fossilen
               Emissionen aus Wärme und Strassenverkehr (Basis: 60'500 t Gesamtemissionen 2021).
               <span className="subtle">Solarstrom, der nur den heutigen CH-Strommix ersetzt, spart deutlich weniger – die grosse Wirkung entsteht erst zusammen mit der Elektrifizierung. Vergleichswerte: Retourflug ZRH–NY ≈ 2 t, Durchschnittsauto ≈ 1.8 t/Jahr, Erdumrundung im Benziner ≈ 6 t.</span>
+              <Quellen items={[Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>Kosten: 1'800–2'800 CHF/kWp (klein) · 950–1'400 CHF/kWp (gross)</strong>
               Marktpreise Schweiz 2025/26 (Swissolar-Solarmonitor, EnergieSchweiz-Marktstudie,
               Anbieter-Richtpreise). Einmalvergütung des Bundes: grob 15 % der Investition.
               <span className="subtle">Preise ändern sich laufend; Netzausbau, Speicher und Rückbau sind nicht eingerechnet. Ab 2026 richtet sich die Rückliefervergütung nach Marktpreisen – das verändert die Wirtschaftlichkeit einzelner Anlagen, nicht aber die Grössenordnung hier.</span>
+              <Quellen items={[["EnergieSchweiz: Preisbeobachtungsstudie PV 2025 (PDF)", LINKS.preisstudie], ["Swissolar-Faktenblatt 2025 (PDF)", LINKS.swissolarFakten], ["Pronovo (Einmalvergütung)", LINKS.pronovo]]} />
             </div>
           </div>
         </section>
 
         <footer>
           Verein Elekt-Risch · Solarpotenzial-Rechner Gemeinde Risch · Datenstand Juli 2026.
-          Quellen: Energie Reporter (www.energiereporter.ch) – Daten: geoimpact AG /
+          Quellen: <a href={LINKS.energieReporter} target="_blank" rel="noreferrer">Energie Reporter</a> – Daten: geoimpact AG /
           EnergieSchweiz, CC BY 4.0 · BFE Sonnendach.ch (Solarpotenziale der Schweizer
           Gemeinden, opendata.swiss) · Energie- und Klimastrategie Gemeinde Risch 2025 ·
           Swissolar &amp; EnergieSchweiz Marktbeobachtung. Wappen: Gemeinde Risch (Quelle: Wikimedia Commons). Alle Angaben sind Näherungen ohne Gewähr.
