@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 
 /* ============================================================
@@ -36,7 +36,7 @@ const D = {
   potenzialDachGWh: 64.6,      // BFE Sonnendach, Ausgabe 2025, nur Dächer
   potenzialFassadeGWh: 88.83,  // BFE 2025, Dächer + Fassaden
   ertragKWhProKWp: 950,        // spezifischer Ertrag Mittelland (±10 %)
-  heuteAnteilPct: 11,          // genutzter Anteil Dachpotenzial (Schätzung 2026)
+  heuteAnteilPct: 18,          // genutzter Anteil Dachpotenzial (Energie Reporter, Okt. 2026)
   stromHeuteGWh: 70,           // Strom inkl. Wärmepumpen, Boiler, E-Autos
   endenergieGWh: 290,          // gesamter Endenergieverbrauch 2021
   elektrifiziertGWh: 120,      // Modell: alles elektrisch (WP JAZ 3, E-Auto Faktor 3)
@@ -57,13 +57,28 @@ const PRICE = {
   hoch: { klein: 2800, gross: 1400, label: "konservativ" },
 };
 
-// Rückrechnung anhand des schweizweiten Wachstums (wird durch Live-Daten ersetzt)
+// 2015–2020: Rückrechnung anhand des schweizweiten Wachstums.
+// 2021–2026: Energie Reporter (Jahresendstand, 2026 = Sept.), eingebettet Okt. 2026.
+// Wird durch Live-Daten ersetzt, sobald die Historisierung geladen ist.
 const HISTORY_EST = [
   { jahr: 2015, gwh: 1.5 }, { jahr: 2016, gwh: 1.9 }, { jahr: 2017, gwh: 2.3 },
   { jahr: 2018, gwh: 2.8 }, { jahr: 2019, gwh: 3.3 }, { jahr: 2020, gwh: 3.9 },
-  { jahr: 2021, gwh: 4.5 }, { jahr: 2022, gwh: 5.2 }, { jahr: 2023, gwh: 5.9 },
-  { jahr: 2024, gwh: 6.6 }, { jahr: 2025, gwh: 7.1 }, { jahr: 2026, gwh: 7.8 },
+  { jahr: 2021, gwh: 4.7 }, { jahr: 2022, gwh: 5.1 }, { jahr: 2023, gwh: 5.5 },
+  { jahr: 2024, gwh: 7.3 }, { jahr: 2025, gwh: 9.6 }, { jahr: 2026, gwh: 11.6 },
 ];
+
+// Trend «gleiches Tempo»: Zubau der letzten drei vollen Jahre fortgeschrieben.
+// Spanne aus den Swissolar-Szenarien (Solarmonitor 2025) relativ zum
+// Schweizer Zubau 2023–2025 (Ø ≈ 1.6 GW/Jahr, Statistik Sonnenenergie 2025).
+const TREND = {
+  zubauKWpProJahr: 2690, // Energie Reporter Risch: 4'549 kWp (Ende 2022) → 12'626 kWp (Ende 2025)
+  mwhProKWp: 0.86,       // Energie Reporter Sept. 2026: 11'573 MWh / 13'410 kWp
+  faktorBremse: 0.75,    // Bremsszenario: Zubau pendelt sich bei ~1.2 GW/Jahr ein
+  faktorMittel: 1.13,    // Mittelszenario: bis 2029 zurück auf Rekord 2024 (~1.8 GW/Jahr)
+  zielJahr: 2050,        // Gemeinde: Potenzial 2050 ausgeschöpft (Energie- und Klimastrategie)
+  vonJahr: 2015,
+  bisJahr: 2060,
+};
 
 const VERBRAUCH = [
   {
@@ -133,6 +148,8 @@ const LINKS = {
   preisstudie: "https://pubdb.bfe.admin.ch/de/publication/download/12694",
   swissolarFakten: "https://www.swissolar.ch/02_markt-politik/faktenblatt/de_2025_faktenblatt_pv_schweiz_sws.pdf",
   pronovo: "https://pronovo.ch",
+  statistikSonne: "https://www.swissolar.ch/_default_upload_bucket/12679-20260703_statistik_sonnenenergie_2025_bericht_de_def.pdf",
+  solarmonitor: "https://www.swissolar.ch/02_markt-politik/solarmonitor-schweiz/2025/ssr-solarmonitor-2025-final.pdf",
 };
 
 function Quellen({ items }) {
@@ -422,6 +439,122 @@ function Bar({ label, mwh, max, tone, note, unit = "MWh" }) {
   );
 }
 
+/* ---------- Trendgrafik: bisheriger Ausbau + «gleiches Tempo» bis 2060 ---------- */
+// Zeichnet in Pixeln statt per viewBox, damit Beschriftungen auf dem Handy
+// lesbar bleiben (ResizeObserver misst die Kartenbreite).
+function TrendChart({ history, trend }) {
+  const ref = useRef(null);
+  const [w, setW] = useState(640);
+  const [hover, setHover] = useState(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setW(Math.max(280, el.clientWidth));
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setW(Math.max(280, e.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const H = 290, m = { l: 34, r: 16, t: 18, b: 26 };
+  const pot = D.potenzialDachGWh;
+  const yMax = 70;
+  const { vonJahr, bisJahr, zielJahr } = TREND;
+  const pw = w - m.l - m.r, ph = H - m.t - m.b;
+  const step = pw / (bisJahr - vonJahr + 1);
+  const x = (j) => m.l + (j - vonJahr + 0.5) * step;
+  const y = (v) => m.t + ph - (v / yMax) * ph;
+  const s0 = trend.start.jahr;
+
+  const zukunft = [];
+  for (let j = s0; j <= bisJahr; j++) zukunft.push(j);
+  const band =
+    zukunft.map((j) => `${x(j)},${y(trend.wert(j, trend.raten.hoch))}`).join(" ") + " " +
+    [...zukunft].reverse().map((j) => `${x(j)},${y(trend.wert(j, trend.raten.tief))}`).join(" ");
+  const mitte = zukunft.map((j) => `${x(j)},${y(trend.wert(j, trend.raten.mitte))}`).join(" ");
+  const ticks = (w < 520 ? [2020, 2030, 2040, 2050, 2060] : [2015, 2020, 2025, 2030, 2035, 2040, 2045, 2050, 2055, 2060]);
+  const barW = Math.max(3, step * 0.62);
+
+  const pick = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - r.left) * w) / r.width; // falls skaliert dargestellt
+    const j = Math.round(vonJahr + (px - m.l) / step - 0.5);
+    setHover(Math.min(bisJahr, Math.max(vonJahr, j)));
+  };
+  const hv = hover ?? null;
+  const histPunkt = hv != null ? history.find((h) => h.jahr === hv) : null;
+
+  let readout = "Fahren Sie über die Grafik, um einzelne Jahre abzulesen.";
+  if (histPunkt) {
+    readout = `${hv}: ${f(histPunkt.gwh, 1)} GWh ${histPunkt.live ? "(Energie Reporter)" : "(Schätzung)"}`;
+  } else if (hv != null && hv > s0) {
+    readout = `${hv}: gleiches Tempo ${f(trend.wert(hv, trend.raten.mitte), 1)} GWh ` +
+      `(Spanne ${f(trend.wert(hv, trend.raten.tief), 0)}–${f(trend.wert(hv, trend.raten.hoch), 0)})` +
+      (hv <= zielJahr ? ` · Zielpfad ${f(trend.zielWert(hv), 1)} GWh` : "");
+  }
+
+  return (
+    <div ref={ref} className="trend">
+      <div className="trend-readout mono" aria-live="polite">{readout}</div>
+      <svg viewBox={`0 0 ${w} ${H}`} role="img"
+        aria-label={`Solarstrom Risch ${vonJahr} bis ${bisJahr}: bisher gemessen, Fortschreibung bei gleichem Tempo bis ca. ${trend.jahrMitte}, Zielpfad bis ${zielJahr}`}
+        onPointerMove={pick} onPointerLeave={() => setHover(null)}>
+        <defs>
+          <pattern id="trend-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="var(--amber)" />
+            <rect width="3" height="6" fill="#F7C64F" />
+          </pattern>
+        </defs>
+
+        {[0, 20, 40, 60].map((v) => (
+          <g key={v}>
+            <line x1={m.l} x2={w - m.r} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="1" />
+            <text x={m.l - 6} y={y(v) + 4} textAnchor="end" className="trend-ax">{v}</text>
+          </g>
+        ))}
+        <text x={m.l - 6} y={m.t - 3} textAnchor="end" className="trend-ax">GWh</text>
+        {ticks.map((j) => (
+          <text key={j} x={x(j)} y={H - 6} textAnchor="middle" className="trend-ax">{j}</text>
+        ))}
+
+        {/* Dachpotenzial */}
+        <line x1={m.l} x2={w - m.r} y1={y(pot)} y2={y(pot)} stroke="var(--ink)" strokeWidth="1.5" strokeDasharray="2 4" />
+        <text x={m.l + 6} y={y(pot) - 7} className="trend-lbl">Dachpotenzial {f(pot, 1)} GWh</text>
+
+        {/* heute */}
+        <line x1={x(s0) + step / 2} x2={x(s0) + step / 2} y1={m.t} y2={m.t + ph} stroke="var(--ink-soft)" strokeWidth="1" strokeDasharray="3 3" />
+        <text x={x(s0) + step / 2 + 5} y={m.t + ph - 6} className="trend-ax">heute →</text>
+
+        {/* Spanne + gleiches Tempo */}
+        <polygon points={band} fill="var(--amber)" opacity="0.22" />
+        <polyline points={mitte} fill="none" stroke="var(--amber-deep)" strokeWidth="2.5" strokeDasharray="7 5" />
+
+        {/* Zielpfad Gemeinde */}
+        <line x1={x(s0)} y1={y(trend.start.gwh)} x2={x(zielJahr)} y2={y(pot)} stroke="var(--green)" strokeWidth="2.5" />
+        <circle cx={x(zielJahr)} cy={y(pot)} r="5" fill="var(--green)" stroke="var(--card)" strokeWidth="2" />
+
+        {/* bisher */}
+        {history.map((h) => (
+          <rect key={h.jahr} x={x(h.jahr) - barW / 2} y={y(h.gwh)} width={barW}
+            height={Math.max(1, y(0) - y(h.gwh))} rx="2"
+            fill={h.live ? "var(--amber)" : "url(#trend-hatch)"} />
+        ))}
+
+        {hv != null && (
+          <line x1={x(hv)} x2={x(hv)} y1={m.t} y2={m.t + ph} stroke="var(--ink)" strokeWidth="1" opacity="0.45" />
+        )}
+      </svg>
+      <div className="hist-legend">
+        <span><span className="swatch" />bisher (Energie Reporter)</span>
+        <span><span className="swatch est" />bisher geschätzt</span>
+        <span><span className="swatch line amber" />gleiches Tempo</span>
+        <span><span className="swatch band" />Spanne (Swissolar-Szenarien)</span>
+        <span><span className="swatch line green" />Zielpfad Gemeinde 2050</span>
+      </div>
+    </div>
+  );
+}
+
 export default function SolarRechnerRisch() {
   const [pct, setPct] = useState(D.heuteAnteilPct);
   const [grossAnteil, setGrossAnteil] = useState(55);
@@ -434,6 +567,7 @@ export default function SolarRechnerRisch() {
   const [status, setStatus] = useState("loading"); // loading | live | fallback
   const [live, setLive] = useState(null);          // aktuelle Kennzahlen Risch
   const [liveHist, setLiveHist] = useState(null);  // Jahresreihe Solarproduktion
+  const [liveKwp, setLiveKwp] = useState(null);    // Jahresreihe installierte kWp
   const [compare, setCompare] = useState(null);  // Gemeindevergleich
 
   useEffect(() => {
@@ -494,9 +628,12 @@ export default function SolarRechnerRisch() {
         const rows = await fetchCsvFromZip(LIVE.historizedUrls, "municipality");
         const mine = rows.filter((x) => Number(x.bfs_nr) === LIVE.bfsNr);
         const byYear = new Map();
+        const kwpByYear = new Map();
         for (const r of mine) {
           const jahr = Number(String(r.energyreporter_date || "").slice(0, 4));
           if (!jahr) continue;
+          const kwp = Number(r.solar_power_installed_kwp);
+          if (kwp > 0) kwpByYear.set(jahr, kwp);
           const gwh =
             Number(r.renelec_production_solar_mwh_per_year) > 0
               ? Number(r.renelec_production_solar_mwh_per_year) / 1000
@@ -506,6 +643,7 @@ export default function SolarRechnerRisch() {
           if (gwh != null) byYear.set(jahr, gwh); // letzter Monatswert pro Jahr gewinnt
         }
         if (alive && byYear.size > 0) setLiveHist(byYear);
+        if (alive && kwpByYear.size > 0) setLiveKwp(kwpByYear);
       } catch (e) { /* Historie bleibt Schätzung */ }
     })();
 
@@ -577,7 +715,39 @@ export default function SolarRechnerRisch() {
         : { ...h, live: false };
     });
   }, [liveHist]);
-  const histMax = Math.max(...history.map((h) => h.gwh));
+
+  // Trend: Zubau aus der installierten Leistung (kWp) – diese Reihe ist seit
+  // 2021 durchgehend; Produktionswerte liefert der Energie Reporter erst ab
+  // Ende 2023. Umgerechnet mit dem aktuellen spezifischen Ertrag.
+  const trend = useMemo(() => {
+    const last = history[history.length - 1];
+    const vollJahr = last.jahr - 1;
+    const k1 = liveKwp?.get(vollJahr), k0 = liveKwp?.get(vollJahr - 3);
+    const zubauKWp = k1 && k0 && k1 > k0 ? (k1 - k0) / 3 : TREND.zubauKWpProJahr;
+    const mwhProKWp = live?.solarMwh && live?.installedKwp
+      ? live.solarMwh / live.installedKwp
+      : TREND.mwhProKWp;
+    const tempo = (zubauKWp * mwhProKWp) / 1000; // GWh pro Jahr
+    const pot = D.potenzialDachGWh;
+    const rest = Math.max(0, pot - last.gwh);
+    const raten = {
+      tief: tempo * TREND.faktorBremse,
+      mitte: tempo,
+      hoch: tempo * TREND.faktorMittel,
+    };
+    const erreicht = (r) => Math.round(last.jahr + rest / r);
+    const zielRate = rest / (TREND.zielJahr - last.jahr);
+    return {
+      start: last, vollJahr, zubauKWp, tempo, raten, zielRate,
+      faktor: zielRate / tempo,
+      jahrMitte: erreicht(raten.mitte),
+      jahrFrueh: erreicht(raten.hoch),
+      jahrSpaet: erreicht(raten.tief),
+      wert: (jahr, r) => Math.min(pot, last.gwh + r * (jahr - last.jahr)),
+      zielWert: (jahr) => Math.min(pot, last.gwh + zielRate * (jahr - last.jahr)),
+      liveBasis: !!(k1 && k0),
+    };
+  }, [history, liveKwp, live]);
 
   const vergleich = useMemo(() => {
     if (compare) return compare;
@@ -766,16 +936,18 @@ export default function SolarRechnerRisch() {
         .fazit{margin-top:22px;padding:16px 18px;border-radius:12px;background:var(--graphite);
           color:#F4EFE2;font-size:16px;font-weight:500}
 
-        .hist{display:flex;align-items:flex-end;gap:6px;height:190px;margin-top:26px}
-        .hist-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
-        .hist-bar{width:100%;max-width:44px;background:var(--amber);border-radius:6px 6px 2px 2px;
-          transition:height .3s ease;min-height:4px}
-        .hist-bar.est{background:repeating-linear-gradient(45deg,var(--amber),var(--amber) 5px,#F7C64F 5px,#F7C64F 10px)}
-        .hist-num{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft)}
-        .hist-year{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600}
         .hist-legend{display:flex;gap:18px;font-size:13px;color:var(--ink-soft);margin-top:14px;flex-wrap:wrap}
         .swatch{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:6px;vertical-align:-2px;background:var(--amber)}
         .swatch.est{background:repeating-linear-gradient(45deg,var(--amber),var(--amber) 4px,#F7C64F 4px,#F7C64F 8px)}
+        .swatch.line{width:20px;height:0;border-radius:0;background:none;border-top:3px solid var(--green);vertical-align:4px}
+        .swatch.line.amber{border-top:3px dashed var(--amber-deep)}
+        .swatch.band{background:rgba(240,164,0,.28)}
+        .trend{margin-top:6px}
+        .trend{min-width:0;overflow:hidden}
+        .trend svg{display:block;width:100%;height:auto;touch-action:pan-y}
+        .trend-readout{font-size:12.5px;color:var(--ink-soft);min-height:20px;margin-bottom:6px}
+        .trend-ax{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-soft)}
+        .trend-lbl{font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;fill:var(--ink)}
 
         .vgrid{display:grid;gap:16px;margin-top:22px}
         .vrow{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
@@ -830,7 +1002,7 @@ export default function SolarRechnerRisch() {
         footer{padding:40px 0 60px;color:var(--ink-soft);font-size:13.5px;border-top:1px solid var(--line);margin-top:30px}
 
         @media (prefers-reduced-motion: reduce){
-          .dbar-fill,.hist-bar{transition:none}
+          .dbar-fill{transition:none}
           .badge-dot.loading{animation:none}
         }
       `}</style>
@@ -946,32 +1118,45 @@ export default function SolarRechnerRisch() {
         <section>
           <h2>Schritt für Schritt zu mehr Strom</h2>
           <p className="subtle" style={{ maxWidth: 640 }}>
-            Solarstromproduktion in der Gemeinde Risch pro Jahr. Wo verfügbar, stammen die
-            Werte direkt aus der monatlichen Historisierung des Energie Reporters
-            (jeweils letzter Datenstand des Jahres); schraffierte Balken sind Schätzungen.
+            Solarstromproduktion in der Gemeinde Risch pro Jahr – und wie es weitergeht,
+            wenn wir im gleichen Tempo weiterbauen wie bisher, ohne zusätzliche Anstrengungen.
+            Die Spanne zeigt, wie stark der Markt laut Branchenprognosen schwanken kann.
           </p>
           <div className="card" style={{ marginTop: 20 }}>
-            <div className="hist">
-              {history.map((h) => (
-                <div className="hist-col" key={h.jahr}>
-                  <div className="hist-num">{f(h.gwh, 1)}</div>
-                  <div
-                    className={`hist-bar ${h.live ? "" : "est"}`}
-                    style={{ height: `${(h.gwh / histMax) * 78}%` }}
-                    title={`${h.jahr}: ca. ${f(h.gwh, 1)} GWh${h.live ? " (Energie Reporter)" : " (Schätzung)"}`}
-                  />
-                  <div className="hist-year">{String(h.jahr).slice(2)}</div>
+            <TrendChart history={history} trend={trend} />
+            <div className="resgrid">
+              <div className="res">
+                <div className="res-big">ca. {trend.jahrMitte}</div>
+                <div className="res-lbl">
+                  ist das Dachpotenzial bei gleichem Tempo ausgeschöpft
+                  (Spanne {trend.jahrFrueh}–{trend.jahrSpaet})
                 </div>
-              ))}
+              </div>
+              <div className="res blue">
+                <div className="res-big">{f(trend.tempo, 1)} GWh</div>
+                <div className="res-lbl">
+                  Zubau pro Jahr bisher (Ø {trend.vollJahr - 2}–{trend.vollJahr},
+                  rund {f(trend.zubauKWp / 1000, 1)} MWp)
+                </div>
+              </div>
+              <div className="res green">
+                <div className="res-big">{f(trend.zielRate, 1)} GWh</div>
+                <div className="res-lbl">
+                  pro Jahr nötig für das Gemeindeziel {TREND.zielJahr}
+                  {trend.faktor > 1.05
+                    ? ` – ${f(trend.faktor, 1)}-mal das bisherige Tempo`
+                    : " – das bisherige Tempo reicht knapp, wenn es gehalten wird"}
+                </div>
+              </div>
             </div>
-            <div className="hist-legend">
-              <span><span className="swatch" />Energie Reporter (gemessen/modelliert)</span>
-              <span><span className="swatch est" />Schätzung / Hochrechnung</span>
-            </div>
-            <p className="subtle" style={{ marginTop: 14 }}>
-              In GWh pro Jahr. Beim Tempo der letzten Jahre wäre das volle Dachpotenzial
-              erst in über 70 Jahren erreicht. Für das Ziel der Gemeinde – Potenzial bis
-              2050 ausgeschöpft – müsste der Zubau rund dreimal schneller werden.
+            <p className="subtle" style={{ marginTop: 16 }}>
+              {trend.faktor > 1.05
+                ? `Beim Tempo der letzten drei Jahre wäre das Dachpotenzial erst um ${trend.jahrMitte} genutzt. Für das Ziel der Gemeinde – Potenzial bis ${TREND.zielJahr} ausgeschöpft – müsste der Zubau rund ${f(trend.faktor, 1)}-mal schneller werden.`
+                : `Risch hat in den letzten Jahren kräftig zugebaut. Hält dieses Tempo, ist das Gemeindeziel ${TREND.zielJahr} erreichbar – aber nur knapp.`}
+              {" "}Selbstläufer ist das nicht: Schweizweit ist der Zubau 2025 um 26 % eingebrochen.
+              Bleibt der Markt im Bremsszenario stecken, wird es erst {trend.jahrSpaet} –
+              Förderung, Beratung und gute Beispiele aus dem Dorf entscheiden, auf welcher
+              Seite der Spanne wir landen.
             </p>
           </div>
         </section>
@@ -1226,8 +1411,9 @@ export default function SolarRechnerRisch() {
             </div>
             <div className="src-item">
               <strong>Heute installiert: ≈ {f(base.heuteGWh, 1)} GWh ({base.heutePct} % des Potenzials)</strong>
-              Primär aus dem Energie Reporter; ohne Live-Verbindung aus der Energie- und
-              Klimastrategie der Gemeinde Risch (2025: «rund 10 % genutzt»), fortgeschrieben.
+              Primär aus dem Energie Reporter; ohne Live-Verbindung der eingebettete Stand
+              des Energie Reporters vom Okt. 2026. Zum Vergleich: Die Energie- und
+              Klimastrategie der Gemeinde (2025) nennt «rund 10 %» eines Potenzials von 73 GWh.
               <span className="subtle">Unsicherheit im Fallback ±2 GWh. Die Jahresreihe vor 2021 bleibt eine Rückrechnung anhand des schweizweiten Wachstums – der Energie Reporter historisiert erst seit März 2021.</span>
               <Quellen items={[Q_REPORTER, Q_STRATEGIE]} />
             </div>
@@ -1249,6 +1435,18 @@ export default function SolarRechnerRisch() {
               Innenraumheizung); Wärmepumpen im Winter ~190 MWh (118 GWh Wärme, JAZ 3,
               Heizsaison rund 180 Tage). Im Sommer ist der Heizanteil vernachlässigbar.
               <span className="subtle">Bilanzbetrachtung über 24 h: Mittags entsteht ein Überschuss, abends eine Lücke – ohne Speicher ist «rechnerisch gedeckt» nicht «physisch autark». Die Winterfaktoren (+10 % Bedarf, Kältezuschlag E-Auto, Wärmepumpen-Tagesmenge) sind Modellannahmen in plausibler Grössenordnung, nicht für Risch gemessen; je nach Kälte und Sanierungsstand ±30 %.</span>
+            </div>
+            <div className="src-item">
+              <strong>Trend «gleiches Tempo»: ≈ {f(trend.tempo, 1)} GWh Zubau pro Jahr, Spanne −25 % bis +13 %</strong>
+              Zubau = mittlere Zunahme der installierten Leistung in Risch über die letzten
+              drei vollen Jahre ({trend.liveBasis ? "live aus dem Energie Reporter" : "eingebettet: 4'549 kWp Ende 2022 → 12'626 kWp Ende 2025"}),
+              umgerechnet mit dem heutigen spezifischen Ertrag und linear fortgeschrieben.
+              Spanne aus den drei Swissolar-Szenarien relativ zum Schweizer Zubau
+              2023–2025 (Ø ≈ 1.6 GW/Jahr; 2024: 1'799 MW, 2025: 1'333 MW): Bremsszenario
+              ≈ 1.2 GW/Jahr (−25 %), Mittelszenario zurück auf ≈ 1.8 GW/Jahr (+13 %).
+              Zielpfad: linear bis zum Gemeindeziel «Potenzial {TREND.zielJahr} ausgeschöpft».
+              <span className="subtle">Annahme: Risch folgt dem Schweizer Markt. Ein einzelnes Grossprojekt (z.B. ein Areal oder Gewerbedach) verschiebt die Kurve sichtbar – der Sprung 2023 dürfte so entstanden sein. Lineare Fortschreibung: keine Sättigung, kein Ersatz alter Anlagen, keine Fassaden. Je näher am vollen Potenzial, desto schwieriger werden die restlichen Dächer – das späte Ende der Spanne ist realistischer als das frühe.</span>
+              <Quellen items={[Q_REPORTER, ["Statistik Sonnenenergie 2025 (PDF)", LINKS.statistikSonne], ["Swissolar Solarmonitor 2025 (PDF)", LINKS.solarmonitor], Q_STRATEGIE]} />
             </div>
             <div className="src-item">
               <strong>Elektrifizierter Bedarf: ≈ 120 GWh pro Jahr</strong>

@@ -44,7 +44,7 @@ fällt auf Direktabruf/Fallback zurück (Badge).
 
 ## Datenarchitektur (wichtig)
 
-1. **Eingebettete Basiswerte** = Fallback, Stand Juli 2026 (Objekte `D`, `HISTORY_EST`, `COMPARE`, `CH_EST`, `GELD`, `CO2`, `PRICE` — alle zuoberst in `App.jsx`).
+1. **Eingebettete Basiswerte** = Fallback, Stand Juli 2026 (Objekte `D`, `HISTORY_EST`, `TREND`, `COMPARE`, `CH_EST`, `GELD`, `CO2`, `PRICE` — alle zuoberst in `App.jsx`). `HISTORY_EST` 2021–26, `TREND` und `D.heuteAnteilPct` am 8.10.2026 auf Energie-Reporter-Stand nachgeführt; `COMPARE` noch Juli-Stand.
 2. **Live-Daten**: Energie Reporter (geoimpact/EnergieSchweiz, CC BY 4.0) als ZIP.
    `fetchCsvFromZip` probiert URLs der Reihe nach: zuerst `/api/energiereporter.php`
    (gleiche Domain → kein CORS), dann Direktabruf `opendata.geoimpact.ch`.
@@ -72,6 +72,7 @@ fällt auf Direktabruf/Fallback zurück (Badge).
 | Elektrifizierter Bedarf | ≈ 120 GWh/a | Modell: WP JAZ 3, E-Auto-Faktor 3 |
 | CO2 | 60'500 t/a total, ~40'000 t fossil vermeidbar | Gemeindebilanz 2021 |
 | Fossiler Geldabfluss | ≈ CHF 25 Mio/a (20–30) | Modell aus 57 GWh Wärme + 96 GWh Treibstoff |
+| Zubau-Tempo Risch | ≈ 2.3 GWh/a (2.7 MWp/a, Ø 2023–25), Spanne −25 %/+13 % | Energie Reporter; Swissolar Solarmonitor 2025 (Szenarien), Statistik Sonnenenergie 2025 |
 | Kosten | 1'800–2'800 CHF/kWp klein · 950–1'400 gross | Swissolar/EnergieSchweiz 2025/26 |
 
 ## Grundprinzipien (nicht verletzen)
@@ -129,7 +130,6 @@ fällt auf Direktabruf/Fallback zurück (Badge).
 
 - «Was bedeutet das für mich?»: Haustyp-Rechner (EFH/MFH/Gewerbe) mit
   Amortisation + Link auf sonnendach.ch (eigenes Dach per Adresse)
-- Ziel-Tracker 2050: Soll/Ist-Zubaupfad («3× schneller nötig»)
 - Renovations-Wegweiser: Checkliste + Förderungen Bund/Kanton Zug/Steuerabzug
 - Erfolgsgeschichten aus dem Dorf, Social-Media-Teilkarten
 - Live-Anzeige «Sonnenproduktion jetzt»
