@@ -41,6 +41,12 @@ const D = {
   endenergieGWh: 290,          // gesamter Endenergieverbrauch 2021
   elektrifiziertGWh: 120,      // Modell: alles elektrisch (WP JAZ 3, E-Auto Faktor 3)
   sommertagKWhProKWp: 5.5,     // Ertrag an einem wolkenlosen Sommertag
+  wintertagKWhProKWp: 1.4,     // klarer Wintertag – rund ein Viertel des Sommerwerts
+  bedarfFaktorSommer: 0.92,    // Tagesbedarf gegenüber dem Jahresmittel
+  bedarfFaktorWinter: 1.1,     // Winter: kürzere Tage, mehr Licht und Warmwasser
+  eAutoTagSommerMWh: 88,       // Strassenverkehr vollständig elektrisch, Sommertag
+  eAutoTagWinterMWh: 115,      // + Kältezuschlag: Reichweite und Innenraumheizung
+  waermepumpeTagWinterMWh: 190, // 118 GWh Wärme, JAZ 3, Heizsaison rund 180 Tage
   einwohner: 12000,
   eivFoerderung: 0.15,         // Einmalvergütung Bund, grober Durchschnitt
 };
@@ -374,7 +380,13 @@ function Bar({ label, mwh, max, tone, note, unit = "MWh" }) {
         <span className="mono">{f(mwh)} {unit}</span>
       </div>
       <div className="dbar-track">
-        <div className={`dbar-fill ${tone}`} style={{ width: `${w}%` }} />
+        {/* Mindestbreite = Balkenhöhe: sehr kleine Werte (Wintertag bei tiefem
+            Ausbaugrad) bleiben als Punkt sichtbar statt zum Strich zu zerfallen.
+            Der exakte Wert steht ohnehin als Zahl daneben. */}
+        <div
+          className={`dbar-fill ${tone}`}
+          style={{ width: mwh > 0 ? `max(22px, ${w}%)` : 0 }}
+        />
       </div>
       {note && <div className="dbar-note">{note}</div>}
     </div>
@@ -387,6 +399,7 @@ export default function SolarRechnerRisch() {
   const [preis, setPreis] = useState("mittel");
   const [eiv, setEiv] = useState(true);
   const [zieljahr, setZieljahr] = useState(2040);
+  const [saison, setSaison] = useState("sommer"); // sommer | winter
 
   // Live-Daten Energie Reporter
   const [status, setStatus] = useState("loading"); // loading | live | fallback
@@ -481,9 +494,18 @@ export default function SolarRechnerRisch() {
     const potMWp = live?.installedKwp && live?.usage
       ? live.installedKwp / 1000 / live.usage
       : (D.potenzialDachGWh * 1000) / D.ertragKWhProKWp;
-    const sommertagStromMWh = Math.round((stromGWh * 1000) / 365 * 0.92); // Sommer leicht tiefer
-    const sommertagElektrifiziertMWh = sommertagStromMWh + 88;            // + E-Mobilität
-    return { heuteGWh, heutePct, stromGWh, potMWp, sommertagStromMWh, sommertagElektrifiziertMWh };
+    const tagesmittelMWh = (stromGWh * 1000) / 365;
+    const sommertagStromMWh = Math.round(tagesmittelMWh * D.bedarfFaktorSommer);
+    const wintertagStromMWh = Math.round(tagesmittelMWh * D.bedarfFaktorWinter);
+    const sommertagElektrifiziertMWh = sommertagStromMWh + D.eAutoTagSommerMWh;
+    // Im Winter kommt zur E-Mobilität die Wärmepumpe dazu – der grosse Brocken
+    const wintertagElektrifiziertMWh =
+      wintertagStromMWh + D.eAutoTagWinterMWh + D.waermepumpeTagWinterMWh;
+    return {
+      heuteGWh, heutePct, stromGWh, potMWp,
+      sommertagStromMWh, sommertagElektrifiziertMWh,
+      wintertagStromMWh, wintertagElektrifiziertMWh,
+    };
   }, [live]);
 
   // Slider nachführen, sobald Live-Daten da sind
@@ -502,12 +524,15 @@ export default function SolarRechnerRisch() {
     const foerder = eiv ? invest * D.eivFoerderung : 0;
     const netto = invest - foerder;
     const jahre = Math.max(1, zieljahr - 2026);
-    const tagMWh = mwp * D.sommertagKWhProKWp;
+    const tagSommerMWh = mwp * D.sommertagKWhProKWp;
+    const tagWinterMWh = mwp * D.wintertagKWhProKWp;
     return {
-      prodGWh, mwp, addMWp, blended, invest, foerder, netto, jahre, tagMWh,
+      prodGWh, mwp, addMWp, blended, invest, foerder, netto, jahre,
+      tagSommerMWh, tagWinterMWh,
       pctStrom: (prodGWh / base.stromGWh) * 100,
       pctElektrifiziert: (prodGWh / D.elektrifiziertGWh) * 100,
-      deckSommerHeute: (tagMWh / base.sommertagStromMWh) * 100,
+      deckSommerHeute: (tagSommerMWh / base.sommertagStromMWh) * 100,
+      deckWinterHeute: (tagWinterMWh / base.wintertagStromMWh) * 100,
     };
   }, [pct, grossAnteil, preis, eiv, zieljahr, base]);
 
@@ -549,13 +574,48 @@ export default function SolarRechnerRisch() {
   const ernTotal = VERBRAUCH.reduce((s, v) => s + v.erneuerbar, 0);
   const ernPct = Math.round((ernTotal / D.endenergieGWh) * 100);
 
-  let sommerFazit;
-  if (c.tagMWh >= base.sommertagElektrifiziertMWh) {
-    sommerFazit = "Ja – dieser Ausbaugrad würde an einem sonnigen Sommertag sogar den Bedarf decken, wenn zusätzlich alle Autos elektrisch fahren.";
-  } else if (c.tagMWh >= base.sommertagStromMWh) {
-    sommerFazit = "Ja – dieser Ausbaugrad deckt an einem sonnigen Sommertag den gesamten heutigen Strombedarf der Gemeinde.";
+  // Beide Jahreszeiten teilen sich bewusst dieselbe Skala – nur so bleibt der
+  // Unterschied zwischen Sommer- und Winterertrag beim Umschalten sichtbar.
+  const tagMax = Math.max(
+    base.wintertagElektrifiziertMWh,
+    base.potMWp * D.sommertagKWhProKWp
+  ) * 1.06;
+
+  const sommer = saison === "sommer";
+  const tag = sommer
+    ? {
+        prod: c.tagSommerMWh,
+        prodLabel: `Solarproduktion an einem Sommertag (${pct} % Ausbau)`,
+        prodNote: `Annahme: ${D.sommertagKWhProKWp} kWh pro kWp und Tag – deckt ${f(c.deckSommerHeute, 0)} % des heutigen Tagesbedarfs`,
+        bedarf: base.sommertagStromMWh,
+        bedarfLabel: "Strombedarf der Gemeinde an einem Sommertag – heute",
+        bedarfNote: "Haushalte, Gewerbe, Industrie, Warmwasser (Heizung im Sommer kaum relevant)",
+        plus: base.sommertagElektrifiziertMWh,
+        plusLabel: "Strombedarf, wenn zusätzlich alle Autos elektrisch fahren",
+        plusNote: "Modellrechnung: heutige Strassenkilometer vollständig elektrisch",
+      }
+    : {
+        prod: c.tagWinterMWh,
+        prodLabel: `Solarproduktion an einem Wintertag (${pct} % Ausbau)`,
+        prodNote: `Annahme: ${D.wintertagKWhProKWp} kWh pro kWp und Tag – rund ein Viertel eines Sommertags, deckt ${f(c.deckWinterHeute, 0)} % des heutigen Tagesbedarfs`,
+        bedarf: base.wintertagStromMWh,
+        bedarfLabel: "Strombedarf der Gemeinde an einem Wintertag – heute",
+        bedarfNote: "Höher als im Sommer: kürzere Tage, mehr Licht und Warmwasser",
+        plus: base.wintertagElektrifiziertMWh,
+        plusLabel: "Strombedarf, wenn zusätzlich elektrisch geheizt und gefahren wird",
+        plusNote: "Modellrechnung: Wärmepumpen statt Öl und Gas, Strassenverkehr elektrisch",
+      };
+
+  let tagFazit;
+  if (!sommer) {
+    const deckAlles = (c.tagWinterMWh / base.wintertagElektrifiziertMWh) * 100;
+    tagFazit = `An einem klaren Wintertag deckt dieser Ausbaugrad ${f(c.deckWinterHeute, 0)} % des heutigen Strombedarfs – und ${f(deckAlles, 0)} % des Bedarfs, wenn auch geheizt und gefahren elektrisch wird. Das ist die Winterlücke: Sie lässt sich mit Solar auf den Dächern allein nicht schliessen.`;
+  } else if (c.tagSommerMWh >= base.sommertagElektrifiziertMWh) {
+    tagFazit = "Ja – dieser Ausbaugrad würde an einem sonnigen Sommertag sogar den Bedarf decken, wenn zusätzlich alle Autos elektrisch fahren.";
+  } else if (c.tagSommerMWh >= base.sommertagStromMWh) {
+    tagFazit = "Ja – dieser Ausbaugrad deckt an einem sonnigen Sommertag den gesamten heutigen Strombedarf der Gemeinde.";
   } else {
-    sommerFazit = `Noch nicht ganz: Ab rund ${breakEvenPct} % Ausbaugrad würde ein sonniger Sommertag den gesamten heutigen Strombedarf decken.`;
+    tagFazit = `Noch nicht ganz: Ab rund ${breakEvenPct} % Ausbaugrad würde ein sonniger Sommertag den gesamten heutigen Strombedarf decken.`;
   }
 
   const statusText = {
@@ -661,6 +721,11 @@ export default function SolarRechnerRisch() {
         .res-big{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600}
         .res-lbl{font-size:13.5px;color:var(--ink-soft);margin-top:2px}
 
+        .seg{display:inline-flex;gap:4px;background:#E1EAEF;padding:4px;border-radius:99px;margin-top:18px}
+        .seg button{border:0;background:transparent;font:inherit;font-weight:600;font-size:14.5px;
+          color:var(--ink-soft);padding:9px 22px;border-radius:99px;cursor:pointer;
+          transition:background .2s ease,color .2s ease}
+        .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
         .dbar{margin-top:18px}
         .dbar-head{display:flex;justify-content:space-between;font-weight:600;font-size:15px;margin-bottom:6px}
         .dbar-track{background:#E1EAEF;border-radius:99px;height:22px;overflow:hidden}
@@ -817,33 +882,31 @@ export default function SolarRechnerRisch() {
 
         {/* ---------- SONNIGER TAG ---------- */}
         <section>
-          <h2>Ein schöner Sommertag</h2>
+          <h2>Ein schöner Tag – Sommer oder Winter?</h2>
           <p className="subtle" style={{ maxWidth: 640 }}>
-            Die Kernfrage: Könnten wir uns an einem wolkenlosen Sommertag selbst versorgen?
+            Die Kernfrage: Könnten wir uns an einem wolkenlosen Tag selbst versorgen?
             Die Balken zeigen die Tagesbilanz beim oben gewählten Ausbaugrad von {pct} %.
+            Beide Ansichten nutzen dieselbe Skala – schalten Sie um.
           </p>
-          <div className="card" style={{ marginTop: 20 }}>
-            <Bar
-              label={`Solarproduktion an einem Sommertag (${pct} % Ausbau)`}
-              mwh={c.tagMWh} max={Math.max(420, base.sommertagElektrifiziertMWh * 1.4)} tone="amber"
-              note={`Annahme: 5.5 kWh pro kWp und Tag – deckt ${f(c.deckSommerHeute, 0)} % des heutigen Tagesbedarfs`}
-            />
-            <Bar
-              label="Strombedarf der Gemeinde an einem Sommertag – heute"
-              mwh={base.sommertagStromMWh} max={Math.max(420, base.sommertagElektrifiziertMWh * 1.4)} tone="blue"
-              note="Haushalte, Gewerbe, Industrie, Warmwasser (Heizung im Sommer kaum relevant)"
-            />
-            <Bar
-              label="Strombedarf, wenn zusätzlich alle Autos elektrisch fahren"
-              mwh={base.sommertagElektrifiziertMWh} max={Math.max(420, base.sommertagElektrifiziertMWh * 1.4)} tone="slate"
-              note="Modellrechnung: heutige Strassenkilometer vollständig elektrisch"
-            />
-            <div className="fazit">{sommerFazit}</div>
+          <div className="seg" role="group" aria-label="Jahreszeit wählen">
+            <button
+              type="button" className={sommer ? "on" : ""} aria-pressed={sommer}
+              onClick={() => setSaison("sommer")}
+            >Sommertag</button>
+            <button
+              type="button" className={!sommer ? "on" : ""} aria-pressed={!sommer}
+              onClick={() => setSaison("winter")}
+            >Wintertag</button>
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <Bar label={tag.prodLabel} mwh={tag.prod} max={tagMax} tone="amber" note={tag.prodNote} />
+            <Bar label={tag.bedarfLabel} mwh={tag.bedarf} max={tagMax} tone="blue" note={tag.bedarfNote} />
+            <Bar label={tag.plusLabel} mwh={tag.plus} max={tagMax} tone="slate" note={tag.plusNote} />
+            <div className="fazit">{tagFazit}</div>
             <p className="subtle" style={{ marginTop: 14 }}>
               Wichtig: Die Sonne liefert mittags mehr, als gleichzeitig verbraucht wird.
-              Für eine echte Tages-Selbstversorgung braucht es Speicher und das Netz.
-              Im Winter liegt der Tagesertrag nur bei etwa einem Viertel eines Sommertags –
-              die Winterlücke löst Solar allein nicht.
+              Für eine echte Tages-Selbstversorgung braucht es Speicher und das Netz –
+              im Winter zusätzlich andere Quellen wie Wasserkraft, Wind oder Holz.
             </p>
           </div>
         </section>
@@ -1142,11 +1205,14 @@ export default function SolarRechnerRisch() {
               <span className="subtle">Bevölkerung und Verbrauch sind seit 2021 gewachsen (+5–10 %). Mobilität enthält auch Flugreisen und Bahn; erneuerbare Anteile pro Gruppe sind teilweise modelliert.</span>
             </div>
             <div className="src-item">
-              <strong>Sommertag: 5.5 kWh pro kWp und Tag</strong>
-              Typischer wolkenloser Junitag im Mittelland (Spanne 5–6 kWh/kWp). Tagesbedarf
-              = Jahresstromverbrauch / 365, Sommer −8 %; elektrifizierter Tag + ~88 MWh
-              für E-Mobilität.
-              <span className="subtle">Bilanzbetrachtung über 24 h: Mittags entsteht ein Überschuss, abends eine Lücke – ohne Speicher ist «rechnerisch gedeckt» nicht «physisch autark». Wintertage liefern nur ~25 % eines Sommertags.</span>
+              <strong>Sommertag: 5.5 kWh pro kWp · Wintertag: 1.4 kWh pro kWp</strong>
+              Typischer wolkenloser Junitag im Mittelland (Spanne 5–6 kWh/kWp); ein klarer
+              Wintertag liefert rund einen Viertel davon. Tagesbedarf = Jahresstromverbrauch
+              / 365, im Sommer −8 %, im Winter +10 %. Zusatzverbraucher pro Tag: E-Mobilität
+              ~88 MWh im Sommer, ~115 MWh im Winter (Kältezuschlag für Reichweite und
+              Innenraumheizung); Wärmepumpen im Winter ~190 MWh (118 GWh Wärme, JAZ 3,
+              Heizsaison rund 180 Tage). Im Sommer ist der Heizanteil vernachlässigbar.
+              <span className="subtle">Bilanzbetrachtung über 24 h: Mittags entsteht ein Überschuss, abends eine Lücke – ohne Speicher ist «rechnerisch gedeckt» nicht «physisch autark». Die Winterfaktoren (+10 % Bedarf, Kältezuschlag E-Auto, Wärmepumpen-Tagesmenge) sind Modellannahmen in plausibler Grössenordnung, nicht für Risch gemessen; je nach Kälte und Sanierungsstand ±30 %.</span>
             </div>
             <div className="src-item">
               <strong>Elektrifizierter Bedarf: ≈ 120 GWh pro Jahr</strong>
