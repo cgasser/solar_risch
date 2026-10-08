@@ -159,6 +159,12 @@ const LINKS = {
   preisstudie: "https://pubdb.bfe.admin.ch/de/publication/download/12694",
   swissolarFakten: "https://www.swissolar.ch/02_markt-politik/faktenblatt/de_2025_faktenblatt_pv_schweiz_sws.pdf",
   pronovo: "https://pronovo.ch",
+  elektRisch: "https://elekt-risch.ch/",
+  elektZiel: "https://elekt-risch.ch/index.php/sample-page/",
+  elektUeberUns: "https://elekt-risch.ch/index.php/ueber-uns/",
+  elektAnpacken: "https://elekt-risch.ch/index.php/mitwirken/",
+  elektKontakt: "https://elekt-risch.ch/index.php/kontakt/",
+  elektBeitraege: "https://elekt-risch.ch/index.php/beitraege/",
   statistikSonne: "https://www.swissolar.ch/_default_upload_bucket/12679-20260703_statistik_sonnenenergie_2025_bericht_de_def.pdf",
   sidler: "https://www.zug4you.ch/en/news/news-articles/a/the-most-powerful-photovoltaic-system-in-the-canton",
   solarmonitor: "https://www.swissolar.ch/02_markt-politik/solarmonitor-schweiz/2025/ssr-solarmonitor-2025-final.pdf",
@@ -576,6 +582,15 @@ export default function SolarRechnerRisch() {
   const [saison, setSaison] = useState("sommer"); // sommer | winter
   const [fassaden, setFassaden] = useState(false);
   const [aktivTeil, setAktivTeil] = useState(null); // Inhaltsverzeichnis: sichtbarer Teil
+  const tocRef = useRef(null);
+  // Auf schmalen Bildschirmen den aktiven Eintrag in der Leiste sichtbar halten
+  useEffect(() => {
+    const nav = tocRef.current;
+    const a = nav?.querySelector("a.on");
+    if (!nav || !a) return;
+    const left = a.offsetLeft - nav.clientWidth / 2 + a.offsetWidth / 2;
+    nav.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [aktivTeil]);
 
   // Live-Daten Energie Reporter
   const [status, setStatus] = useState("loading"); // loading | live | fallback
@@ -744,7 +759,7 @@ export default function SolarRechnerRisch() {
   }, [base, preis, grossAnteil, eiv]);
 
   useEffect(() => {
-    const ids = ["ist", "soll", "kosten-nutzen", "quellen"];
+    const ids = ["ist", "soll", "kosten-nutzen", "verein", "quellen"];
     const onScroll = () => {
       let cur = null;
       for (const id of ids) {
@@ -909,9 +924,10 @@ export default function SolarRechnerRisch() {
         .kurz a{color:inherit;text-decoration:none;border-bottom:2px solid rgba(240,164,0,.55)}
         .kurz a:hover{border-bottom-color:var(--amber-deep)}
         .toc{position:sticky;top:0;z-index:20;display:flex;gap:4px;overflow-x:auto;
-          margin:26px -20px 0;padding:10px 20px;background:rgba(237,243,246,.92);
-          backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
-          scrollbar-width:none}
+          margin:26px -20px 0;padding:10px 20px;background:rgba(255,255,255,.96);
+          backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+          border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+          box-shadow:0 4px 14px rgba(16,41,63,.10);scrollbar-width:none}
         .toc::-webkit-scrollbar{display:none}
         .toc a{flex:none;color:var(--ink-soft);text-decoration:none;font-size:14px;font-weight:600;
           padding:6px 12px;border-radius:99px;white-space:nowrap;transition:background .2s ease}
@@ -925,6 +941,18 @@ export default function SolarRechnerRisch() {
         .part-title{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:18px}
         .part-lead{color:var(--ink-soft);font-size:14.5px;flex-basis:100%}
         .part + section{padding-top:22px}
+        .verein-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:20px}
+        .verein-card{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--green);
+          border-radius:4px 4px 14px 14px;padding:14px 18px;font-size:15px;color:var(--ink-soft)}
+        .verein-card strong{display:block;color:var(--ink);font-family:'Archivo',sans-serif;
+          font-stretch:125%;font-weight:800;font-size:17px;margin-bottom:4px}
+        .verein-list{list-style:none;margin-top:8px;display:grid;gap:10px}
+        .verein-list a,.inline-link{color:var(--amber-deep);font-weight:600}
+        .verein-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+        .btn{display:inline-block;background:var(--ink);color:#F4EFE2;text-decoration:none;font-weight:600;
+          font-size:14.5px;padding:9px 18px;border-radius:99px}
+        .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+        .btn:hover{opacity:.88}
         .mono{font-family:'IBM Plex Mono',monospace}
         h1,h2{font-family:'Archivo',sans-serif;font-stretch:125%;line-height:1.05;letter-spacing:-.01em}
         h1{font-size:clamp(34px,6vw,58px);font-weight:800}
@@ -1141,11 +1169,12 @@ export default function SolarRechnerRisch() {
           </div>
         </header>
 
-        <nav className="toc" aria-label="Inhalt">
+        <nav className="toc" aria-label="Inhalt" ref={tocRef}>
           {[
             ["ist", "1", "Wo stehen wir?"],
             ["soll", "2", "Was ist möglich?"],
             ["kosten-nutzen", "3", "Kosten & Nutzen"],
+            ["verein", "", "Mitmachen"],
             ["quellen", "", "Quellen"],
           ].map(([id, n, label]) => (
             <a key={id} href={`#${id}`} className={aktivTeil === id ? "on" : ""}
@@ -1542,6 +1571,65 @@ export default function SolarRechnerRisch() {
           </div>
         </section>
 
+        {/* ---------- VEREIN ELEKT-RISCH ---------- */}
+        <section id="verein">
+          <h2>Wer steckt dahinter – und wie Sie mitmachen</h2>
+          <p className="subtle" style={{ maxWidth: 660 }}>
+            Elekt-Risch ist eine Gruppe von Menschen aus Rotkreuz, Holzhäusern, Buonas und
+            Risch. Unser Ziel: die ganze Gemeinde elektrisch – Wärmepumpen statt Öl und Gas,
+            Elektromobilität bis zum Lastwagen, viel Solarstrom und ein Plan, damit er reicht.
+            Mehr dazu auf <a className="inline-link" href={LINKS.elektRisch} target="_blank" rel="noreferrer">elekt-risch.ch</a>.
+          </p>
+          <div className="verein-grid">
+            <div className="verein-card">
+              <strong>Wir leben hier.</strong>
+              Global denken, lokal handeln – wir kümmern uns um unsere Gemeinde.
+            </div>
+            <div className="verein-card">
+              <strong>Wir sind unabhängig.</strong>
+              Keine Spenden von Firmen. Kaufen Sie Wärmepumpe, Solaranlage oder E-Auto, wo Sie wollen.
+            </div>
+            <div className="verein-card">
+              <strong>Wir brauchen Euch.</strong>
+              Mitmachen kann, wer in Risch wohnt und die Sache voranbringen will – egal wie alt.
+            </div>
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <strong>Lesenswert auf elekt-risch.ch</strong>
+            <ul className="verein-list">
+              <li>
+                <a href={LINKS.elektZiel} target="_blank" rel="noreferrer">Das Ziel</a>
+                <span className="subtle"> – warum «ein bisschen kürzer duschen» nicht reicht und welche Technologien die Lösung schon heute liefern.</span>
+              </li>
+              <li>
+                <a href="https://elekt-risch.ch/index.php/2025/06/21/meine-oel-heizung-laeuft-ja-noch/" target="_blank" rel="noreferrer">Meine Öl-Heizung läuft ja noch …</a>
+                <span className="subtle"> – lohnt sich der Ersatz einer funktionierenden Heizung? Eine Rechnung mit Produktionsemissionen (Juni 2025).</span>
+              </li>
+              <li>
+                <a href="https://elekt-risch.ch/index.php/2025/06/21/hello-world/" target="_blank" rel="noreferrer">Batterien sind soooooo schlimm. Oder doch nicht?</a>
+                <span className="subtle"> – was die Herstellung einer E-Auto-Batterie wirklich an CO2 kostet (Juni 2025).</span>
+              </li>
+              <li>
+                <a href="https://elekt-risch.ch/index.php/2025/10/04/gas-oder-elektro-grill/" target="_blank" rel="noreferrer">Gas oder Elektro-Grill?</a>
+                <span className="subtle"> – kann ein Elektrogrill wirklich grillen? (Oktober 2025)</span>
+              </li>
+            </ul>
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <strong>Anpacken</strong>
+            <p className="subtle" style={{ marginTop: 6 }}>
+              Sie wohnen zur Miete und wünschen sich eine Ladestation? Auf elekt-risch.ch gibt es
+              einen Musterbrief an die Vermieterschaft (Word, PDF oder online). Sie haben eine
+              Idee oder möchten helfen, wissen aber noch nicht wie? Schreiben Sie uns.
+            </p>
+            <div className="verein-actions">
+              <a className="btn" href={LINKS.elektAnpacken} target="_blank" rel="noreferrer">Anpacken &amp; Musterbrief</a>
+              <a className="btn ghost" href={LINKS.elektKontakt} target="_blank" rel="noreferrer">Kontakt</a>
+              <a className="btn ghost" href={LINKS.elektBeitraege} target="_blank" rel="noreferrer">Alle Beiträge</a>
+            </div>
+          </div>
+        </section>
+
         {/* ---------- DATEN & FEHLERQUELLEN ---------- */}
         <section id="quellen">
           <h2>Daten, Annahmen &amp; Fehlerquellen</h2>
@@ -1676,7 +1764,7 @@ export default function SolarRechnerRisch() {
         </section>
 
         <footer>
-          Verein Elekt-Risch · Solarpotenzial-Rechner Gemeinde Risch · Datenstand Juli 2026.
+          <a href={LINKS.elektRisch} target="_blank" rel="noreferrer">Verein Elekt-Risch</a> · Solarpotenzial-Rechner Gemeinde Risch · Datenstand Okt. 2026.
           Quellen: <a href={LINKS.energieReporter} target="_blank" rel="noreferrer">Energie Reporter</a> – Daten: geoimpact AG /
           EnergieSchweiz, CC BY 4.0 · BFE Sonnendach.ch (Solarpotenziale der Schweizer
           Gemeinden, opendata.swiss) · Energie- und Klimastrategie Gemeinde Risch 2025 ·
